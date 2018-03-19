@@ -1,0 +1,5 @@
+*.log
+TODO.md
+oculeye.toml
+oculeye.exe
+/oculeye
