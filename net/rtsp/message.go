@@ -101,6 +101,10 @@ func (r *Request) Pack() []byte {
 	buf.Write(colsp)
 	buf.WriteString(Agent)
 	buf.Write(crnl)
+	buf.WriteString(HeaderContentLength)
+	buf.Write(colsp)
+	buf.WriteByte('0') // We do not have any content in Client -> Server commands.
+	buf.Write(crnl)
 	buf.Write(crnl)
 	return buf.Bytes()
 }
