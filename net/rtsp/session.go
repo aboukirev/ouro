@@ -306,6 +306,15 @@ func (s *Session) handleRtsp() (err error) {
 			if err = t.Parse(rsp.Header.Get(HeaderTransport)); err != nil {
 				return err
 			}
+			if !t.IsTCP {
+				ch := byte(len(s.transp)) * 2
+				if err := s.AddSink(ch, t.Port.One); err != nil {
+					return err
+				}
+				if err := s.AddSink(ch+1, t.Port.Two); err != nil {
+					return err
+				}
+			}
 			s.transp = append(s.transp, t)
 		} else if rsp.StatusCode != RtspUnauthorized {
 			// Stream is not available even though SDP told us it is.
@@ -313,6 +322,7 @@ func (s *Session) handleRtsp() (err error) {
 		}
 		if len(s.transp) == len(s.feeds) {
 			s.notify(StageReady)
+			s.Start(s.Data, s.Control)
 		}
 	}
 

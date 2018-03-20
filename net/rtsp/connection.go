@@ -18,13 +18,15 @@ type (
 		Timeout time.Duration
 		URL     *url.URL // Parsed out original URI with user credentials.
 		BaseURI string   // Formatted URI without user credentials.
+		addr    *net.IPAddr
+		sinks   []udpsink
 	}
 
-	// UDPConn maintains UDP connection for RTP and RTCP channel pair.
-	UDPConn struct {
-		data *net.UDPConn // UDP connection for data channel.
-		ctrl *net.UDPConn // UDP connection for control channel.
-		ch   byte         // Data channel number.  Control channel is ch + 1.
+	// Maintains UDP connection for RTP and RTCP channel pair.
+	udpsink struct {
+		*net.UDPConn
+		done  chan int
+		index byte
 	}
 )
 
@@ -113,53 +115,64 @@ func (c *Conn) ReadBytes(n int) ([]byte, error) {
 	return b, err
 }
 
-// NewUDPConn starts listening on a pair of UDP sockets for RTP and RTCP packets.
-func (c *UDPConn) NewUDPConn(ch byte, port int) (err error) {
-	c.ch = ch
-	var addr *net.IPAddr
-	if addr, err = net.ResolveIPAddr("ip", "127.0.0.1"); err != nil {
+// AddSink creates a listener on UDP port for RTP data or control channel.
+func (c *Conn) AddSink(index byte, port int) error {
+	if c.addr == nil {
+		var err error
+		if c.addr, err = net.ResolveIPAddr("ip", "127.0.0.1"); err != nil {
+			return err
+		}
+	}
+
+	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: c.addr.IP, Port: port, Zone: ""})
+	if err != nil {
 		return err
 	}
-	if c.data, err = net.ListenUDP("udp", &net.UDPAddr{IP: addr.IP, Port: port, Zone: ""}); err != nil {
-		return err
+	sink := udpsink{
+		UDPConn: conn,
+		done:    make(chan int),
+		index:   index,
 	}
-	if c.ctrl, err = net.ListenUDP("udp", &net.UDPAddr{IP: addr.IP, Port: port + 1, Zone: ""}); err != nil {
-		c.data.Close()
-		return err
-	}
-	return
+	c.sinks = append(c.sinks, sink)
+	return nil
 }
 
-// Process incoming UDP data sending packets to respecive channels.
-func (c *UDPConn) Process(datach, ctrlch chan ChannelData) {
-	go func() {
-		var buf [2048]byte
-		for {
-			// TODO: Check for flag to close connection.
-			n, _, err := c.data.ReadFromUDP(buf[:])
-			if err != nil {
-				break
-			}
-			if datach != nil {
-				datach <- ChannelData{Channel: c.ch, Payload: append([]byte{}, buf[:n]...)}
-			}
+// Start initiates processing of incoming packets on all UDP listeners created thus far.
+func (c *Conn) Start(datach, ctrlch chan ChannelData) {
+	var ch chan ChannelData
+	for i, s := range c.sinks {
+		if (i % 2) == 0 {
+			ch = datach
+		} else {
+			ch = ctrlch
 		}
-		c.data.Close()
-		// TODO: Notify caller about closed connection.
-	}()
-	go func() {
-		var buf [2048]byte
-		for {
-			// TODO: Check for flag to close connection.
-			n, _, err := c.ctrl.ReadFromUDP(buf[:])
-			if err != nil {
-				break
+		go func(sink udpsink) {
+			var buf [2048]byte
+			for {
+				select {
+				case <-sink.done:
+					break
+				}
+				n, _, err := sink.ReadFromUDP(buf[:])
+				if err != nil {
+					break
+				}
+				if ch != nil {
+					ch <- ChannelData{Channel: sink.index, Payload: append([]byte{}, buf[:n]...)}
+				}
 			}
-			if ctrlch != nil {
-				ctrlch <- ChannelData{Channel: c.ch + 1, Payload: append([]byte{}, buf[:n]...)}
-			}
+			sink.Close()
+			// TODO: Notify caller about closed connection.
+		}(s)
+	}
+}
+
+// Stop tells all UDP listeners to suspend processing and close.  The list of listerners is reset.
+func (c *Conn) Stop() {
+	for _, sink := range c.sinks {
+		select {
+		case sink.done <- 1:
 		}
-		c.ctrl.Close()
-		// TODO: Notify caller about closed connection.
-	}()
+	}
+	c.sinks = c.sinks[:0]
 }
