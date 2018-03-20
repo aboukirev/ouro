@@ -1,6 +1,8 @@
+### Description
 This project is an attempt to build a comprehensive library to connect to IP cameras and consume video and audio streams.
 The ultimate goal is to create a robust streaming proxy converting IP camera stream into something directly usable from a browser.
 
+### Features
 At this time the following functionality has been implemented:
 - Connecting to camera over RTSP.
 - OPTIONS, DESCRIBE, SETUP, PLAY, PAUSE, and TEARDOWN commands.
@@ -15,6 +17,16 @@ At this time the following functionality has been implemented:
 - Receiving and parsing basic RTCP packets.
 - Initial work on UDP listeners for RTP over UDP.
 
+### Building and running
+Get the source:
+```
+go get https://github.com/aboukirev/oculeye
+```
+Execute either `make build` or  `go build ./cmd/oculeye`.
+Copy `example.toml` to `oculeye.toml` and modify `url` setting in it to point to your camera of choice..
+Run `./oculeye`.  It will out put log of the short session to console.  At this time it just connects to camera, starts session, consumes stream for 2 seconds, pauses for 2 more seconds, then terminates connection.  
+
+### Plans
 I wanted to get real response data before I start writing tests for packets and messages.  That is in the plans.
 It is hard to test RTSP as it operates as a state machine: RTSP messages (text protocol) and RTP packets (binary protocol) are coming through the same connection in an unpredictable order. 
 
@@ -22,3 +34,4 @@ I am building just client functionality.  I plan to finish RTP/RTCP over UDP, ad
 Then the plans include transforming media streams to output HLS or MPEG-DASH.
 
 There are many more intricacies involved in handling protocols proper.  For instance, packetisation mode from SDP can help with hadling RTP payload.  Sequence number returned in response to PLAY command can be used to find initial RTP packet to start streaming with, etc.  A better SDP parser would be useful.  Sorting out of order NAL units in MTAP NAL could be useful if there are cameras sending MTAPs.
+
