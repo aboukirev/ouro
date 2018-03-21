@@ -43,7 +43,6 @@ type Digest struct {
 func NewDigest(uri, challenge string) (*Digest, error) {
 	d := &Digest{count: 0, uri: uri}
 	d.algorithm = "MD5"
-	// d.qop = "auth"
 	challenge = strings.TrimSpace(challenge)
 	if strings.HasPrefix(challenge, "Digest ") {
 		d.basic = false
@@ -79,19 +78,20 @@ func NewDigest(uri, challenge string) (*Digest, error) {
 			case "algorithm":
 				d.algorithm = val
 			case "qop":
-				d.qop = val
+				vals := strings.Split(val, ",")
+				if len(vals) > 0 {
+					d.qop = strings.ToLower(vals[0])
+				}
 			default:
 				return nil, ErrAuthMalformedChallenge
 			}
 		}
 	}
 	if d.nonce != "" {
-		if d.algorithm != "MD5" {
+		// FIXME: Make algorithm comparison case-insensitive.
+		if d.algorithm != "MD5" && d.algorithm != "MD5-sess" {
 			return nil, ErrAuthNotImpemented
 		}
-		// if d.qop != "auth" {
-		// 	return nil, ErrAuthNotImpemented
-		// }
 	}
 	return d, nil
 }
@@ -125,6 +125,10 @@ func (d *Digest) Authenticate(username, password string) DigestAuth {
 	}
 	if d.qop != "" {
 		d.next()
+		// FIXME: Make algorithm comparison case-insensitive.
+		if d.algorithm == "MD5-sess" {
+			d.ha1 = md5hex(colonnade(d.ha1, d.nonce, d.cnonce))
+		}
 		out.WriteString("\", qop=")
 		out.WriteString(d.qop)
 		out.WriteString(", nc=")
@@ -150,14 +154,16 @@ func (d *Digest) next() {
 }
 
 func (d *Digest) response(verb string) string {
-	d.ha2 = md5hex(colonnade(verb, d.uri))
-	if d.qop == "auth" {
-		return ", response=\"" + md5hex(colonnade(d.ha1, d.nonce, d.scount, d.cnonce, d.qop, d.ha2)) + "\""
-	} else if d.qop == "" {
-		return ", response=\"" + md5hex(colonnade(d.ha1, d.nonce, d.ha2)) + "\""
+	if d.qop == "auth-int" {
+		body := "" // FIXME: Pass message body to this method
+		d.ha2 = md5hex(colonnade(verb, d.uri, md5hex(body)))
 	} else {
-		return ""
+		d.ha2 = md5hex(colonnade(verb, d.uri))
 	}
+	if d.qop == "" {
+		return ", response=\"" + md5hex(colonnade(d.ha1, d.nonce, d.ha2)) + "\""
+	}
+	return ", response=\"" + md5hex(colonnade(d.ha1, d.nonce, d.scount, d.cnonce, d.qop, d.ha2)) + "\""
 }
 
 func md5hex(data string) string {
