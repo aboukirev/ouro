@@ -13,7 +13,6 @@ import (
 
 var (
 	keepAliveTimeout = time.Second * 2
-	firstUDPPort     = 50000
 )
 
 type (
@@ -27,30 +26,33 @@ type (
 	Session struct {
 		*Conn
 		sync.Mutex
-		Stage   chan int
-		Data    chan ChannelData
-		Control chan ChannelData
-		IsTCP   bool       // Do we wan RTP over TCP?
-		stage   int        // Current stage in state machine.
-		auth    DigestAuth // Callback function to calculate digest authentication for a given verb/method.
-		queue   Queue      // RTSP requests that we are waiting responses for
-		done    chan struct{}
-		session string
-		feeds   []sdp.Media
-		transp  []*Transport
-		verbs   map[string]struct{}
-		last    time.Time
-		cseq    int
+		Proto     int
+		Stage     chan int
+		Data      chan ChannelData
+		Control   chan ChannelData
+		connected bool
+		guid      string
+		stage     int        // Current stage in state machine.
+		auth      DigestAuth // Callback function to calculate digest authentication for a given verb/method.
+		queue     Queue      // RTSP requests that we are waiting responses for
+		done      chan struct{}
+		session   string
+		feeds     []sdp.Media
+		transp    []*Transport
+		verbs     map[string]struct{}
+		last      time.Time
+		cseq      int
 	}
 )
 
 // NewSession returns new RTSP session manager.
 func NewSession() *Session {
 	return &Session{
-		IsTCP:   true,
+		Proto:   ProtoTCP,
 		Stage:   make(chan int),
 		Data:    make(chan ChannelData, 20),
 		Control: make(chan ChannelData),
+		guid:    "unique id for a channel", // FIXME:  Generate a unique id for RTSP over HTTP.
 		stage:   StageInit,
 		queue:   make(Queue),
 		verbs:   make(map[string]struct{}, 11),
@@ -117,6 +119,17 @@ func (s *Session) command(verb, uri string, headers Headers) error {
 
 	log.Println(string(buf))
 
+	if s.Proto == ProtoHTTP {
+		if !s.connected {
+			wrap := req.Post(uri, s.guid)
+			if _, err := s.Write(wrap); err != nil {
+				return err
+			}
+			s.connected = true
+		}
+		buf = req.Encode(buf)
+	}
+
 	if _, err := s.Write(buf); err != nil {
 		return err
 	}
@@ -137,11 +150,7 @@ func (s *Session) Describe() error {
 func (s *Session) Setup() error {
 	var t *Transport
 	for i := range s.feeds {
-		if s.IsTCP {
-			t = NewTransport(ProtoTCP, i*2)
-		} else {
-			t = NewTransport(ProtoUnicast, firstUDPPort+i*2)
-		}
+		t = NewTransport(s.Proto, i*2)
 		// Setup is done on a different URI that accounts for Control in media.
 		uri := s.feeds[i].Control
 		if !strings.HasPrefix(uri, "rtsp://") {
@@ -174,7 +183,7 @@ func (s *Session) Teardown() error {
 // KeepAlive executes OPTIONS on a regular basis to keep connection alive.
 // RTP over TCP does not need keep-alive messages according to RFC.
 func (s *Session) KeepAlive() error {
-	if !s.IsTCP && s.stage > StageInit && s.stage < StageDone {
+	if s.Proto != ProtoHTTP && s.Proto != ProtoTCP && s.stage > StageInit && s.stage < StageDone {
 		if s.last.IsZero() || time.Now().Sub(s.last) >= keepAliveTimeout {
 			s.last = time.Now()
 			// OPTIONS without session might not keep session alive.  GET_PARAMETER may be unsupported by the server.  Check verbs.

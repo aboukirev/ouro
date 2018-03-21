@@ -32,6 +32,17 @@ const (
 )
 
 const (
+	// ProtoTCP requests TCP as lower protocol.
+	ProtoTCP = 0
+	// ProtoUnicast requests UDP unicast as lower protocol.
+	ProtoUnicast = 1
+	// ProtoMulticast requests UDP multicast as lower protocol.
+	ProtoMulticast = 2
+	// ProtoHTTP opens HTTP connections with GET and POST, transmits and receives base64 encoded RTSP messages over it.
+	ProtoHTTP = 3
+)
+
+const (
 	// StageInit indicates initialization stage.
 	StageInit = iota
 	// StageReady indicates that setup of all transports is complete.
@@ -63,6 +74,8 @@ const (
 	HeaderTransport = "Transport"
 	// HeaderUserAgent is RTSP User-Agent header.
 	HeaderUserAgent = "User-Agent"
+	// HeaderXSessionCookie is HTTP X-Session-Cookie header for RTSP over HTTP.
+	HeaderXSessionCookie = "X-Session-Cookie"
 )
 
 const (

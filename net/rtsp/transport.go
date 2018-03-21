@@ -17,17 +17,8 @@ import (
 var (
 	// ErrMalformedTransport indicates trouble parsing Transport header value.
 	ErrMalformedTransport = errors.New("Malformed value of Transport header")
-)
 
-const (
-	// ProtoTCP requests TCP as lower protocol.
-	ProtoTCP = 0
-	// ProtoUnicast requests UDP unicast as lower protocol.
-	ProtoUnicast = 1
-	// ProtoMulticast requests UDP multicast as lower protocol.
-	ProtoMulticast = 2
-	// ProtoHTTP opens HTTP connections with GET and POST, transmits and receives base64 encoded RTSP messages over it.
-	ProtoHTTP = 3
+	firstUDPPort = 50000
 )
 
 type (
@@ -90,9 +81,11 @@ func NewTransport(proto int, port int) *Transport {
 		t.IsInterleaved = true
 		t.Interleave = Pair{One: port, Two: port + 1}
 	case ProtoUnicast:
+		port = firstUDPPort + port
 		t.ClientPort = Pair{One: port, Two: port + 1}
 	case ProtoMulticast:
 		t.IsMulticast = true
+		port = firstUDPPort + port
 		t.Port = Pair{One: port, Two: port + 1}
 	}
 	return t
