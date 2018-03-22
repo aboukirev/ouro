@@ -130,7 +130,7 @@ func (r *Request) Pack() []byte {
 		buf.WriteString(r.Session)
 		buf.Write(crnl)
 	}
-	if r.Verb != VerbOptions && r.Auth != "" {
+	if r.Auth != "" {
 		buf.WriteString(HeaderAuthorization)
 		buf.Write(colsp)
 		buf.WriteString(r.Auth)
