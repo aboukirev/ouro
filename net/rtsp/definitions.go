@@ -139,6 +139,5 @@ var (
 
 const (
 	// Agent is user agent string for this application.
-	// FIXME: Make this configurable.
-	Agent = "Vigil/1.0"
+	Agent = "Oculeye/1.0"
 )
