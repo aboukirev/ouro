@@ -116,7 +116,7 @@ func (s *Session) command(verb, uri string, headers Headers) error {
 		req.Header.Set(key, value)
 	}
 	if s.auth != nil {
-		req.Auth = s.auth(req.Verb)
+		req.Auth = s.auth(req.Verb, nil)
 	}
 	s.enqueue(req)
 	buf := req.Pack()
@@ -276,7 +276,7 @@ func (s *Session) handleRtsp() (err error) {
 		if err = s.authorize(rsp.Header.Get(HeaderAuthenticate)); err != nil {
 			return err
 		}
-		req.Auth = s.auth(req.Verb)
+		req.Auth = s.auth(req.Verb, nil)
 		s.enqueue(req)
 		buf := req.Pack()
 

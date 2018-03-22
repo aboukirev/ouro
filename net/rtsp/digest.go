@@ -18,7 +18,7 @@ var (
 )
 
 // DigestAuth is function to call to encoude authorization for a particular verb in session.
-type DigestAuth func(verb string) string
+type DigestAuth func(verb string, body []byte) string
 
 // Digest encapsulates all information necessary to perform digest authentication against a remote site.
 type Digest struct {
@@ -101,9 +101,9 @@ func (d *Digest) Authenticate(username, password string) DigestAuth {
 	out := strings.Builder{}
 	if d.basic {
 		out.WriteString("Basic ")
-		out.WriteString(base64.StdEncoding.EncodeToString([]byte(colonnade(username, password))))
+		out.WriteString(base64.StdEncoding.EncodeToString(colonnade(username, password)))
 		auth := out.String()
-		return func(verb string) string {
+		return func(verb string, body []byte) string {
 			return auth
 		}
 	}
@@ -138,8 +138,8 @@ func (d *Digest) Authenticate(username, password string) DigestAuth {
 	}
 	out.WriteString("\"")
 	auth := out.String()
-	return func(verb string) string {
-		return auth + d.response(verb)
+	return func(verb string, body []byte) string {
+		return auth + d.response(verb, body)
 	}
 }
 
@@ -153,9 +153,8 @@ func (d *Digest) next() {
 	}
 }
 
-func (d *Digest) response(verb string) string {
+func (d *Digest) response(verb string, body []byte) string {
 	if d.qop == "auth-int" {
-		body := "" // FIXME: Pass message body to this method
 		d.ha2 = md5hex(colonnade(verb, d.uri, md5hex(body)))
 	} else {
 		d.ha2 = md5hex(colonnade(verb, d.uri))
@@ -166,12 +165,24 @@ func (d *Digest) response(verb string) string {
 	return ", response=\"" + md5hex(colonnade(d.ha1, d.nonce, d.scount, d.cnonce, d.qop, d.ha2)) + "\""
 }
 
-func md5hex(data string) string {
+func md5hex(data []byte) string {
 	hf := md5.New()
-	hf.Write([]byte(data))
+	hf.Write(data)
 	return hex.EncodeToString(hf.Sum(nil))
 }
 
-func colonnade(params ...string) string {
-	return strings.Join(params, ":")
+func colonnade(params ...string) []byte {
+	n := len(params) - 1
+	for i := 0; i < len(params); i++ {
+		n += len(params[i])
+	}
+
+	b := make([]byte, n)
+	bp := copy(b, params[0])
+	for _, s := range params[1:] {
+		b[bp] = ':'
+		bp++
+		bp += copy(b[bp:], s)
+	}
+	return b
 }
