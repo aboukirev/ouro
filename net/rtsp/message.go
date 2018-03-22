@@ -2,7 +2,6 @@ package rtsp
 
 import (
 	"bytes"
-	"encoding/base64"
 	"net/textproto"
 	"strconv"
 	"strings"
@@ -67,11 +66,12 @@ func (h MessageHeader) Del(key string) {
 	delete(h, textproto.CanonicalMIMEHeaderKey(key))
 }
 
-// Post issues POST command for RTSP over HTTP wrapper.
-func (r *Request) Post(uri, cookie string) []byte {
+// ConnectHTTP issues command for RTSP over HTTP wrapper.
+func ConnectHTTP(verb, uri, cookie string) []byte {
 	var b [1024]byte
 	buf := bytes.NewBuffer(b[:])
-	buf.WriteString("POST ")
+	buf.WriteString(verb)
+	buf.WriteByte(' ')
 	buf.WriteString(uri)
 	buf.WriteString(" HTTP/1.0")
 	buf.Write(crnl)
@@ -81,23 +81,28 @@ func (r *Request) Post(uri, cookie string) []byte {
 	buf.Write(crnl)
 	buf.WriteString(HeaderAccept)
 	buf.Write(colsp)
-	buf.WriteString("application/x-rtsp-rtp-interleaved")
+	buf.WriteString("application/x-rtsp-tunnelled")
 	buf.Write(crnl)
+	buf.WriteString(HeaderPragma)
+	buf.Write(colsp)
+	buf.WriteString("no-cache")
+	buf.Write(crnl)
+	buf.WriteString(HeaderCacheControl)
+	buf.Write(colsp)
+	buf.WriteString("no-cache")
+	buf.Write(crnl)
+	if verb == "POST" {
+		buf.WriteString(HeaderContentLength)
+		buf.Write(colsp)
+		buf.WriteString("32767") // Arbitrarily large number according to specification
+		buf.Write(crnl)
+	}
 	buf.WriteString(HeaderUserAgent)
 	buf.Write(colsp)
 	buf.WriteString(Agent)
 	buf.Write(crnl)
 	buf.Write(crnl)
 	return buf.Bytes()
-}
-
-// Encode buffer with Base64 encoding.
-func (r *Request) Encode(buf []byte) []byte {
-	b := &bytes.Buffer{}
-	w := base64.NewEncoder(base64.StdEncoding, b)
-	w.Write(buf)
-	w.Close()
-	return b.Bytes()
 }
 
 // Pack request into RTSP message.

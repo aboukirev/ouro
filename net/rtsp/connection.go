@@ -2,6 +2,7 @@ package rtsp
 
 import (
 	"bufio"
+	"encoding/base64"
 	"encoding/binary"
 	"net"
 	"net/url"
@@ -15,6 +16,7 @@ type (
 	Conn struct {
 		conn    net.Conn
 		rdr     *bufio.Reader
+		IsHTTP  bool
 		Timeout time.Duration
 		URL     *url.URL // Parsed out original URI with user credentials.
 		BaseURI string   // Formatted URI without user credentials.
@@ -63,6 +65,11 @@ func Dial(uri string) (*Conn, error) {
 func (c *Conn) Write(p []byte) (n int, err error) {
 	if c.Timeout > 0 {
 		c.conn.SetWriteDeadline(time.Now().Add(c.Timeout))
+	}
+	if c.IsHTTP {
+		w := base64.NewEncoder(base64.StdEncoding, c.conn)
+		defer w.Close()
+		return w.Write(p)
 	}
 	return c.conn.Write(p)
 }

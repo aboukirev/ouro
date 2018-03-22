@@ -74,8 +74,12 @@ const (
 	HeaderTransport = "Transport"
 	// HeaderUserAgent is RTSP User-Agent header.
 	HeaderUserAgent = "User-Agent"
-	// HeaderXSessionCookie is HTTP X-Session-Cookie header for RTSP over HTTP.
-	HeaderXSessionCookie = "X-Session-Cookie"
+	// HeaderXSessionCookie is HTTP X-SessionCookie header for RTSP over HTTP.
+	HeaderXSessionCookie = "X-SessionCookie"
+	// HeaderPragma is HTTP Pragma header.
+	HeaderPragma = "Pragma"
+	// HeaderCacheControl is HTTP Cache-Control header.
+	HeaderCacheControl = "Cache-Control"
 )
 
 const (

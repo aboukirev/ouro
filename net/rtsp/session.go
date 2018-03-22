@@ -3,7 +3,9 @@ package rtsp
 // TODO: Could I use * instead of URI in RTSP commands?
 
 import (
+	"fmt"
 	"log"
+	"math/rand"
 	"strings"
 	"sync"
 	"time"
@@ -47,12 +49,14 @@ type (
 
 // NewSession returns new RTSP session manager.
 func NewSession() *Session {
+	guid := fmt.Sprintf("%08x%08x", rand.Int(), rand.Int())
+
 	return &Session{
 		Proto:   ProtoTCP,
 		Stage:   make(chan int),
 		Data:    make(chan ChannelData, 20),
 		Control: make(chan ChannelData),
-		guid:    "unique id for a channel", // FIXME:  Generate a unique id for RTSP over HTTP.
+		guid:    guid,
 		stage:   StageInit,
 		queue:   make(Queue),
 		verbs:   make(map[string]struct{}, 11),
@@ -121,13 +125,13 @@ func (s *Session) command(verb, uri string, headers Headers) error {
 
 	if s.Proto == ProtoHTTP {
 		if !s.connected {
-			wrap := req.Post(uri, s.guid)
+			wrap := ConnectHTTP("POST", uri, s.guid)
 			if _, err := s.Write(wrap); err != nil {
 				return err
 			}
 			s.connected = true
 		}
-		buf = req.Encode(buf)
+		s.IsHTTP = true
 	}
 
 	if _, err := s.Write(buf); err != nil {
