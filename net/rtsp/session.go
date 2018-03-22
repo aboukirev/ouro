@@ -294,7 +294,7 @@ func (s *Session) handleRtsp() (err error) {
 
 	switch req.Verb {
 	case VerbOptions:
-		if rsp.Cseq == 1 {
+		if s.stage == StageInit {
 			for _, v := range strings.Split(rsp.Header.Get(HeaderPublic), ", ") {
 				s.verbs[v] = struct{}{}
 			}
