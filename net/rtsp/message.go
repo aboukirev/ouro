@@ -198,6 +198,7 @@ func Unpack(rdr *Conn) (*Response, error) {
 
 	r.ContentLength, err = strconv.ParseInt(r.Header.Get(HeaderContentLength), 10, 64)
 	if err != nil {
+		err = nil
 		r.ContentLength = 0
 	}
 
