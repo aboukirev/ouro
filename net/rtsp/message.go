@@ -68,8 +68,7 @@ func (h MessageHeader) Del(key string) {
 
 // ConnectHTTP issues command for RTSP over HTTP wrapper.
 func ConnectHTTP(verb, uri, cookie string) []byte {
-	var b [1024]byte
-	buf := bytes.NewBuffer(b[:])
+	buf := &bytes.Buffer{}
 	buf.WriteString(verb)
 	buf.WriteByte(' ')
 	buf.WriteString(uri)
@@ -107,8 +106,7 @@ func ConnectHTTP(verb, uri, cookie string) []byte {
 
 // Pack request into RTSP message.
 func (r *Request) Pack() []byte {
-	var b [1024]byte
-	buf := bytes.NewBuffer(b[:])
+	buf := &bytes.Buffer{}
 	buf.WriteString(r.Verb)
 	buf.WriteByte(' ')
 	buf.WriteString(r.URI)
@@ -211,8 +209,7 @@ func Unpack(rdr *Conn) (*Response, error) {
 
 // Pack response into RTSP message.
 func (r Response) Pack() []byte {
-	var b [1024]byte
-	buf := bytes.NewBuffer(b[:])
+	buf := &bytes.Buffer{}
 	buf.WriteString("RTSP/1.0")
 	buf.WriteByte(' ')
 	buf.WriteString(r.Status)
