@@ -125,6 +125,7 @@ func (d *Digest) Authenticate(username, password string) DigestAuth {
 	}
 	out.WriteString("\"")
 	auth := out.String()
+	d.Next()
 	return func(verb string, body []byte) string {
 		return auth + d.response(verb, body)
 	}
