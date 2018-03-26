@@ -35,7 +35,7 @@ type Digest struct {
 	uri       string
 	ha1       string
 	ha2       string
-	scount    string
+	nc        string
 	count     int
 }
 
@@ -123,19 +123,6 @@ func (d *Digest) Authenticate(username, password string) DigestAuth {
 		out.WriteString("\", opaque=\"")
 		out.WriteString(d.opaque)
 	}
-	if d.qop != "" {
-		d.next()
-		// FIXME: Make algorithm comparison case-insensitive.
-		if d.algorithm == "MD5-sess" {
-			d.ha1 = md5hex(colonnade(d.ha1, d.nonce, d.cnonce))
-		}
-		out.WriteString("\", qop=")
-		out.WriteString(d.qop)
-		out.WriteString(", nc=")
-		out.WriteString(d.scount)
-		out.WriteString(", cnonce=\"")
-		out.WriteString(d.cnonce)
-	}
 	out.WriteString("\"")
 	auth := out.String()
 	return func(verb string, body []byte) string {
@@ -143,14 +130,16 @@ func (d *Digest) Authenticate(username, password string) DigestAuth {
 	}
 }
 
-func (d *Digest) next() {
-	d.count++
-	d.scount = fmt.Sprintf("%08x", d.count)
-	if d.qop == "auth" {
-		b := make([]byte, 8)
-		rand.Read(b)
-		d.cnonce = hex.EncodeToString(b)[:16]
+// Next increments session count and generates new cnonce.
+func (d *Digest) Next() {
+	if d.qop == "" {
+		return
 	}
+	d.count++
+	d.nc = fmt.Sprintf("%08x", d.count)
+	b := make([]byte, 8)
+	rand.Read(b)
+	d.cnonce = hex.EncodeToString(b)[:16]
 }
 
 func (d *Digest) response(verb string, body []byte) string {
@@ -159,10 +148,26 @@ func (d *Digest) response(verb string, body []byte) string {
 	} else {
 		d.ha2 = md5hex(colonnade(verb, d.uri))
 	}
+	out := strings.Builder{}
 	if d.qop == "" {
-		return ", response=\"" + md5hex(colonnade(d.ha1, d.nonce, d.ha2)) + "\""
+		out.WriteString(", response=\"")
+		out.WriteString(md5hex(colonnade(d.ha1, d.nonce, d.ha2)))
+	} else {
+		// FIXME: Make algorithm comparison case-insensitive.
+		if d.algorithm == "MD5-sess" {
+			d.ha1 = md5hex(colonnade(d.ha1, d.nonce, d.cnonce))
+		}
+		out.WriteString(", qop=")
+		out.WriteString(d.qop)
+		out.WriteString(", nc=")
+		out.WriteString(d.nc)
+		out.WriteString(", cnonce=\"")
+		out.WriteString(d.cnonce)
+		out.WriteString("\", response=\"")
+		out.WriteString(md5hex(colonnade(d.ha1, d.nonce, d.nc, d.cnonce, d.qop, d.ha2)))
 	}
-	return ", response=\"" + md5hex(colonnade(d.ha1, d.nonce, d.scount, d.cnonce, d.qop, d.ha2)) + "\""
+	out.WriteByte('"')
+	return out.String()
 }
 
 func md5hex(data []byte) string {
