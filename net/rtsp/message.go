@@ -66,44 +66,6 @@ func (h MessageHeader) Del(key string) {
 	delete(h, textproto.CanonicalMIMEHeaderKey(key))
 }
 
-// ConnectHTTP issues command for RTSP over HTTP wrapper.
-func ConnectHTTP(verb, uri, cookie string) []byte {
-	buf := &bytes.Buffer{}
-	buf.WriteString(verb)
-	buf.WriteByte(' ')
-	buf.WriteString(uri)
-	buf.WriteString(" HTTP/1.0")
-	buf.Write(crnl)
-	buf.WriteString(HeaderXSessionCookie)
-	buf.Write(colsp)
-	buf.WriteString(cookie)
-	buf.Write(crnl)
-	buf.WriteString(HeaderAccept)
-	buf.Write(colsp)
-	buf.WriteString("application/x-rtsp-tunnelled")
-	buf.Write(crnl)
-	buf.WriteString(HeaderPragma)
-	buf.Write(colsp)
-	buf.WriteString("no-cache")
-	buf.Write(crnl)
-	buf.WriteString(HeaderCacheControl)
-	buf.Write(colsp)
-	buf.WriteString("no-store")
-	buf.Write(crnl)
-	if verb == "POST" {
-		buf.WriteString(HeaderContentLength)
-		buf.Write(colsp)
-		buf.WriteString("32767") // Arbitrarily large number according to specification
-		buf.Write(crnl)
-	}
-	buf.WriteString(HeaderUserAgent)
-	buf.Write(colsp)
-	buf.WriteString(Agent)
-	buf.Write(crnl)
-	buf.Write(crnl)
-	return buf.Bytes()
-}
-
 // Pack request into RTSP message.
 func (r *Request) Pack() []byte {
 	buf := &bytes.Buffer{}

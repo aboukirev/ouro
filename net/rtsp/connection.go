@@ -75,11 +75,14 @@ func Dial(uri string) (*Conn, error) {
 
 	if c.Proto == ProtoHTTP {
 		// Issue GET and read response.  Afterwards we'll be getting incoming RTSP/RTP/RTCP responses in a stream.
-		cmd := ConnectHTTP("POST", c.BaseURI, c.guid)
+		cmd := ConnectHTTP("GET", c.BaseURI, c.guid)
 		if _, err := c.conn.Write(cmd); err != nil {
 			return nil, err
 		}
-		// TODO: Read response but only headers and prepare to receive content stream of unknown length.
+		// Read response but only headers and prepare to receive content stream of unknown length.
+		if err := ReceiveHTTP(c); err != nil {
+			return nil, err
+		}
 	}
 
 	return c, nil
