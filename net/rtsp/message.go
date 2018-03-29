@@ -88,7 +88,7 @@ func ConnectHTTP(verb, uri, cookie string) []byte {
 	buf.Write(crnl)
 	buf.WriteString(HeaderCacheControl)
 	buf.Write(colsp)
-	buf.WriteString("no-cache")
+	buf.WriteString("no-store")
 	buf.Write(crnl)
 	if verb == "POST" {
 		buf.WriteString(HeaderContentLength)
