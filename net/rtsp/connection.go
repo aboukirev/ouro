@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"encoding/base64"
 	"encoding/binary"
+	"fmt"
+	"math/rand"
 	"net"
 	"net/url"
 	"time"
@@ -14,14 +16,17 @@ import (
 type (
 	// Conn encapsulates low level network connection and hides buffering and packetization.
 	Conn struct {
-		conn    net.Conn
-		rdr     *bufio.Reader
-		IsHTTP  bool
-		Timeout time.Duration
-		URL     *url.URL // Parsed out original URI with user credentials.
-		BaseURI string   // Formatted URI without user credentials.
-		addr    *net.IPAddr
-		sinks   []udpsink
+		conn      *net.TCPConn  // Main in/out connection in regular RTSP, GET connection in RTSP over HTTP
+		post      *net.TCPConn  // POST connection in RTSP over HTTP
+		rdr       *bufio.Reader // For line-oriented text protocol
+		connected bool          // Indicates that POST has been issued for RTSP over HTTP connection
+		guid      string
+		Proto     int
+		Timeout   time.Duration
+		URL       *url.URL    // Parsed out original URI with user credentials.
+		BaseURI   string      // Formatted URI without user credentials.
+		addr      *net.IPAddr // Local address for UDP listeners
+		sinks     []udpsink   // UDP listeners, 2 per media stream: data and control
 	}
 
 	// Maintains UDP connection for RTP and RTCP channel pair.
@@ -45,7 +50,11 @@ func Dial(uri string) (*Conn, error) {
 		url1.Host = url1.Host + ":554"
 	}
 
-	conn, err := net.Dial("tcp", url1.Host)
+	addr, err := net.ResolveTCPAddr("tcp", url1.Host)
+	if err != nil {
+		return nil, err
+	}
+	conn, err := net.DialTCP("tcp", nil, addr)
 	if err != nil {
 		return nil, err
 	}
@@ -53,23 +62,48 @@ func Dial(uri string) (*Conn, error) {
 	url2 := *url1
 	url2.User = nil
 
-	return &Conn{
-		conn:    conn,
-		rdr:     bufio.NewReaderSize(conn, 2048),
-		Timeout: time.Millisecond * 2000, //time.Second * 2,
-		URL:     url1,
-		BaseURI: url2.String(),
-	}, nil
+	c := &Conn{
+		conn:      conn,
+		rdr:       bufio.NewReaderSize(conn, 2048),
+		connected: false,
+		guid:      fmt.Sprintf("%016x", rand.Uint64()),
+		Proto:     ProtoTCP,
+		Timeout:   time.Millisecond * 2000, //time.Second * 2,
+		URL:       url1,
+		BaseURI:   url2.String(),
+	}
+
+	if c.Proto == ProtoHTTP {
+		// Issue GET and read response.  Afterwards we'll be getting incoming RTSP/RTP/RTCP responses in a stream.
+		cmd := ConnectHTTP("POST", c.BaseURI, c.guid)
+		if _, err := c.conn.Write(cmd); err != nil {
+			return nil, err
+		}
+		// TODO: Read response but only headers and prepare to receive content stream of unknown length.
+	}
+
+	return c, nil
 }
 
 func (c *Conn) Write(p []byte) (n int, err error) {
-	if c.Timeout > 0 {
-		c.conn.SetWriteDeadline(time.Now().Add(c.Timeout))
-	}
-	if c.IsHTTP {
-		w := base64.NewEncoder(base64.StdEncoding, c.conn)
+	if c.Proto == ProtoHTTP {
+		if c.Timeout > 0 {
+			c.post.SetWriteDeadline(time.Now().Add(c.Timeout))
+		}
+		// Issue POST for RTSP over HTTP.  Before first command or after temporary disconnect (after sending PLAY, for instance).
+		if !c.connected {
+			cmd := ConnectHTTP("POST", c.BaseURI, c.guid)
+			if _, err := c.post.Write(cmd); err != nil {
+				return 0, err
+			}
+			c.connected = true
+		}
+		w := base64.NewEncoder(base64.StdEncoding, c.post)
 		defer w.Close()
 		return w.Write(p)
+	}
+	if c.Timeout > 0 {
+		c.conn.SetWriteDeadline(time.Now().Add(c.Timeout))
 	}
 	return c.conn.Write(p)
 }

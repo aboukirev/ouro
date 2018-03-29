@@ -3,9 +3,7 @@ package rtsp
 // TODO: Could I use * instead of URI in RTSP commands?
 
 import (
-	"fmt"
 	"log"
-	"math/rand"
 	"strings"
 	"sync"
 	"time"
@@ -28,35 +26,28 @@ type (
 	Session struct {
 		*Conn
 		sync.Mutex
-		Proto     int
-		Stage     chan int
-		Data      chan ChannelData
-		Control   chan ChannelData
-		connected bool
-		guid      string
-		stage     int        // Current stage in state machine.
-		auth      DigestAuth // Callback function to calculate digest authentication for a given verb/method.
-		queue     Queue      // RTSP requests that we are waiting responses for
-		done      chan struct{}
-		session   string
-		feeds     []sdp.Media
-		transp    []*Transport
-		verbs     map[string]struct{}
-		last      time.Time
-		cseq      int
+		Stage   chan int
+		Data    chan ChannelData
+		Control chan ChannelData
+		stage   int        // Current stage in state machine.
+		auth    DigestAuth // Callback function to calculate digest authentication for a given verb/method.
+		queue   Queue      // RTSP requests that we are waiting responses for
+		done    chan struct{}
+		session string
+		feeds   []sdp.Media
+		transp  []*Transport
+		verbs   map[string]struct{}
+		last    time.Time
+		cseq    int
 	}
 )
 
 // NewSession returns new RTSP session manager.
 func NewSession() *Session {
-	guid := fmt.Sprintf("%08x%08x", rand.Int(), rand.Int())
-
 	return &Session{
-		Proto:   ProtoTCP,
 		Stage:   make(chan int),
 		Data:    make(chan ChannelData, 20),
 		Control: make(chan ChannelData),
-		guid:    guid,
 		stage:   StageInit,
 		queue:   make(Queue),
 		verbs:   make(map[string]struct{}, 11),
@@ -122,17 +113,6 @@ func (s *Session) command(verb, uri string, headers Headers) error {
 	buf := req.Pack()
 
 	log.Println(string(buf))
-
-	if s.Proto == ProtoHTTP {
-		if !s.connected {
-			wrap := ConnectHTTP("POST", uri, s.guid)
-			if _, err := s.Write(wrap); err != nil {
-				return err
-			}
-			s.connected = true
-		}
-		s.IsHTTP = true
-	}
 
 	if _, err := s.Write(buf); err != nil {
 		return err
