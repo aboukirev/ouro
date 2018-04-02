@@ -36,7 +36,7 @@ func main() {
 	go rtspHandler(sess.Stage)
 	go rtpHandler(sess.Data)
 	go rtcpHandler(sess.Control)
-	err := sess.Open(conf.URL)
+	err := sess.Open(conf.URL, rtsp.ProtoTCP)
 	if err != nil {
 		log.Fatalln(err)
 	}

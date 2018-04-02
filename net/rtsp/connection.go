@@ -40,7 +40,7 @@ type (
 var be = binary.BigEndian
 
 // Dial opens RTSP connection and starts a session.
-func Dial(uri string) (*Conn, error) {
+func Dial(uri string, proto int) (*Conn, error) {
 	url1, err := url.Parse(uri)
 	if err != nil {
 		return nil, err
@@ -67,7 +67,7 @@ func Dial(uri string) (*Conn, error) {
 		rdr:       bufio.NewReaderSize(conn, 2048),
 		connected: false,
 		guid:      fmt.Sprintf("%016x", rand.Uint64()),
-		Proto:     ProtoTCP,
+		Proto:     proto,
 		Timeout:   time.Millisecond * 2000, //time.Second * 2,
 		URL:       url1,
 		BaseURI:   url2.String(),

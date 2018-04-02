@@ -55,8 +55,8 @@ func NewSession() *Session {
 }
 
 // Open to an RTSP source.
-func (s *Session) Open(uri string) error {
-	conn, err := Dial(uri)
+func (s *Session) Open(uri string, proto int) error {
+	conn, err := Dial(uri, proto)
 	if err != nil {
 		return err
 	}
