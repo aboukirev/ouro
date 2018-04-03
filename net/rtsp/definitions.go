@@ -139,5 +139,5 @@ var (
 
 const (
 	// Agent is user agent string for this application.
-	Agent = "Oculeye/1.0"
+	Agent = "Ouro/1.0"
 )

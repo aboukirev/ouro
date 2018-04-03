@@ -1,5 +1,6 @@
 *.log
 TODO.md
-oculeye.toml
-oculeye.exe
-/oculeye
+ouro.toml
+ouro.exe
+/ouro
+runit.cmd

@@ -16,15 +16,15 @@ At this time the following functionality has been implemented:
 - Handling NAL aggrgates, fragments, DONs (Decoding Order Number) and timestamps.
 - Receiving and parsing basic RTCP packets.
 - Initial work on UDP listeners for RTP over UDP.
+- Initial work on RTSP over HTTP.
 
 ### Building and running
 Get the source:
 ```
-go get https://github.com/aboukirev/oculeye
+go get https://github.com/aboukirev/ouro
 ```
-Execute either `make build` or  `go build ./cmd/oculeye`.
-Copy `example.toml` to `oculeye.toml` and modify `url` setting in it to point to your camera of choice..
-Run `./oculeye`.  It will out put log of the short session to console.  At this time it just connects to camera, starts session, consumes stream for 2 seconds, pauses for 2 more seconds, then terminates connection.  
+Execute either `make build` or  `go build ./cmd/ouro`.
+Run `./ouro "rtsp://user:password@ip-or-domain/path"`.  It will out put log of the short session to console.  At this time it just connects to camera, starts session, consumes stream for 2 seconds, pauses for 2 more seconds, then terminates connection.  
 
 ### Plans
 I wanted to get real response data before I start writing tests for packets and messages.  That is in the plans.

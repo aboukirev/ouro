@@ -2,6 +2,7 @@ package main
 
 import (
 	// "encoding/hex"
+	"flag"
 	"log"
 	"os"
 	"time"
@@ -10,13 +11,6 @@ import (
 	"github.com/aboukirev/ouro/net/rtcp"
 	"github.com/aboukirev/ouro/net/rtp"
 	"github.com/aboukirev/ouro/net/rtsp"
-	"github.com/burntsushi/toml"
-)
-
-type (
-	config struct {
-		URL string
-	}
 )
 
 var (
@@ -24,11 +18,11 @@ var (
 )
 
 func main() {
-	var conf config
-	if _, err := toml.DecodeFile("./oculeye.toml", &conf); err != nil {
-		log.Fatal("Invalid configuration: ", err)
-		return
+	flag.Parse()
+	if flag.NArg() != 1 {
+		log.Panic("Wrong number of arguments.  Exactly one is expected.")
 	}
+	url := flag.Arg(0)
 
 	current = rtsp.StageInit
 	log.SetOutput(os.Stdout)
@@ -36,7 +30,7 @@ func main() {
 	go rtspHandler(sess.Stage)
 	go rtpHandler(sess.Data)
 	go rtcpHandler(sess.Control)
-	err := sess.Open(conf.URL, rtsp.ProtoTCP)
+	err := sess.Open(url, rtsp.ProtoTCP)
 	if err != nil {
 		log.Fatalln(err)
 	}
