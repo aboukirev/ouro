@@ -78,7 +78,7 @@ func rtspHandler(ch chan int) {
 	}
 }
 
-func rtpHandler(ch chan rtsp.ChannelData) {
+func rtpHandler(ch chan rtsp.RawPacket) {
 	nalsink := h264.NewNALSink()
 	for {
 		select {
@@ -109,7 +109,7 @@ func rtpHandler(ch chan rtsp.ChannelData) {
 	}
 }
 
-func rtcpHandler(ch chan rtsp.ChannelData) {
+func rtcpHandler(ch chan rtsp.RawPacket) {
 	for {
 		select {
 		case msg := <-ch:

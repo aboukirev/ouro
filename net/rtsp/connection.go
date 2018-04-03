@@ -182,8 +182,8 @@ func (c *Conn) AddSink(index byte, port int) error {
 }
 
 // Start initiates processing of incoming packets on all UDP listeners created thus far.
-func (c *Conn) Start(datach, ctrlch chan ChannelData) {
-	var ch chan ChannelData
+func (c *Conn) Start(datach, ctrlch chan RawPacket) {
+	var ch chan RawPacket
 	for i, s := range c.sinks {
 		if (i % 2) == 0 {
 			ch = datach
@@ -202,7 +202,7 @@ func (c *Conn) Start(datach, ctrlch chan ChannelData) {
 					break
 				}
 				if ch != nil {
-					ch <- ChannelData{Channel: sink.index, Payload: append([]byte{}, buf[:n]...)}
+					ch <- RawPacket{Channel: sink.index, Payload: append([]byte{}, buf[:n]...)}
 				}
 			}
 			sink.Close()

@@ -16,8 +16,8 @@ var (
 )
 
 type (
-	// ChannelData represents channel number and raw data buffer of RTP/RTCP packet.
-	ChannelData struct {
+	// RawPacket represents channel number and raw data buffer of RTP/RTCP packet.
+	RawPacket struct {
 		Channel byte
 		Payload []byte
 	}
@@ -27,8 +27,8 @@ type (
 		*Conn
 		sync.Mutex
 		Stage   chan int
-		Data    chan ChannelData
-		Control chan ChannelData
+		Data    chan RawPacket
+		Control chan RawPacket
 		stage   int        // Current stage in state machine.
 		auth    DigestAuth // Callback function to calculate digest authentication for a given verb/method.
 		queue   Queue      // RTSP requests that we are waiting responses for
@@ -46,8 +46,8 @@ type (
 func NewSession() *Session {
 	return &Session{
 		Stage:   make(chan int),
-		Data:    make(chan ChannelData, 20),
-		Control: make(chan ChannelData),
+		Data:    make(chan RawPacket, 20),
+		Control: make(chan RawPacket),
 		stage:   StageInit,
 		queue:   make(Queue),
 		verbs:   make(map[string]struct{}, 11),
@@ -214,11 +214,11 @@ func (s *Session) process() {
 					err = s.handleRtsp()
 				case 0, 2, 4, 6, 8, 10, 12, 14:
 					select {
-					case s.Data <- ChannelData{Channel: ch, Payload: append([]byte{}, buf...)}:
+					case s.Data <- RawPacket{Channel: ch, Payload: append([]byte{}, buf...)}:
 					}
 				case 1, 3, 5, 7, 9, 11, 13, 15:
 					select {
-					case s.Control <- ChannelData{Channel: ch, Payload: append([]byte{}, buf...)}:
+					case s.Control <- RawPacket{Channel: ch, Payload: append([]byte{}, buf...)}:
 					}
 				}
 			}
