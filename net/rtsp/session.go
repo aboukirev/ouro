@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aboukirev/oculeye/net/sdp"
+	"github.com/aboukirev/ouro/net/sdp"
 )
 
 var (

@@ -6,10 +6,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/aboukirev/oculeye/net/h264"
-	"github.com/aboukirev/oculeye/net/rtcp"
-	"github.com/aboukirev/oculeye/net/rtp"
-	"github.com/aboukirev/oculeye/net/rtsp"
+	"github.com/aboukirev/ouro/net/h264"
+	"github.com/aboukirev/ouro/net/rtcp"
+	"github.com/aboukirev/ouro/net/rtp"
+	"github.com/aboukirev/ouro/net/rtsp"
 	"github.com/burntsushi/toml"
 )
 
