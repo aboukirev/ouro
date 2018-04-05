@@ -2,7 +2,6 @@ package hls
 
 import (
 	"bytes"
-	"os"
 	"path"
 	"path/filepath"
 	"strconv"
@@ -39,12 +38,7 @@ type (
 )
 
 // NewPlaylist verifies that file exists and accessible for reading then instantiates Playlist.
-func NewPlaylist(uri string, name string, nseg int, size float64) (*Playlist, error) {
-	f, err := os.OpenFile(name, os.O_RDONLY, 0755)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
+func NewPlaylist(uri string, name string, nseg int, size float64) *Playlist {
 	base := filepath.Base(name)
 	return &Playlist{
 		Version:  4,
@@ -54,7 +48,7 @@ func NewPlaylist(uri string, name string, nseg int, size float64) (*Playlist, er
 		SegSize:  size,
 		First:    -1,
 		Last:     -1,
-	}, nil
+	}
 }
 
 // String renders current state of Playlist as M3U8.
