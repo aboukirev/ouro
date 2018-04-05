@@ -2,6 +2,7 @@ package hls
 
 import (
 	"bytes"
+	"net/url"
 	"path"
 	"path/filepath"
 	"strconv"
@@ -38,17 +39,22 @@ type (
 )
 
 // NewPlaylist verifies that file exists and accessible for reading then instantiates Playlist.
-func NewPlaylist(uri string, name string, nseg int, size float64) *Playlist {
+func NewPlaylist(uri string, name string, nseg int, size float64) (*Playlist, error) {
 	base := filepath.Base(name)
+	u, err := url.Parse(uri)
+	if err != nil {
+		return nil, err
+	}
+	u.Path = path.Join(u.Path, base)
 	return &Playlist{
 		Version:  4,
-		URI:      path.Join(uri, base),
+		URI:      u.String(),
 		FileName: name,
 		Segments: make([]Segment, nseg),
 		SegSize:  size,
 		First:    -1,
 		Last:     -1,
-	}
+	}, nil
 }
 
 // String renders current state of Playlist as M3U8.
