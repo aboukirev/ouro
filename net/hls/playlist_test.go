@@ -24,14 +24,23 @@ https://example.com/media/video.ts
 https://example.com/media/video.ts
 #EXT-X-ENDLIST
 `
-	durations := []float64{2.58, 3.014, 3.24, 2.9777, 3.4333, 3.41}
-	lengths := []int64{82560, 96448, 103680, 95286, 109866, 109120}
+	segments := []struct {
+		duration float64
+		length   int64
+	}{
+		{2.58, 82560},
+		{3.014, 96448},
+		{3.24, 103680},
+		{2.9777, 95286},
+		{3.4333, 109866},
+		{3.41, 109120},
+	}
 	pl, err := NewPlaylist("https://example.com/media", "/var/media/video.ts", 5, 3.5)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for i := 0; i < len(durations) && i < len(lengths); i++ {
-		pl.AddSegment(durations[i], lengths[i])
+	for _, seg := range segments {
+		pl.AddSegment(seg.duration, seg.length)
 	}
 	if pl.String() != list {
 		t.Error(pl)
