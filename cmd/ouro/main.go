@@ -1,7 +1,7 @@
 package main
 
 import (
-	// "encoding/hex"
+	"encoding/hex"
 	"flag"
 	"log"
 	"os"
@@ -95,6 +95,7 @@ func rtpHandler(ch chan rtsp.RawPacket) {
 				}
 				for _, nal := range nalsink.Units {
 					log.Printf("NAL Zero=%t, RefIdc=%d, Type=%d, Size=%d\r\n", nal.ZeroBit(), nal.RefIdc(), nal.Type(), len(nal.Data))
+					log.Println(hex.Dump(nal.Data))
 					// TODO: Detect IDR (Type == 5)
 					// TODO: Feed video packets to HLS/MP4/DASH emitter.
 				}
