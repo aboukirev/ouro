@@ -42,7 +42,7 @@ type Digest struct {
 // NewDigest parses challenge and creates a new basic/digest authentication processor.
 func NewDigest(uri, challenge string) (*Digest, error) {
 	d := &Digest{count: 0, uri: uri}
-	d.algorithm = "MD5"
+	d.algorithm = "md5"
 	challenge = strings.TrimSpace(challenge)
 	if strings.HasPrefix(challenge, "Digest ") {
 		d.basic = false
@@ -76,7 +76,7 @@ func NewDigest(uri, challenge string) (*Digest, error) {
 			case "stale":
 				d.stale = val
 			case "algorithm":
-				d.algorithm = val
+				d.algorithm = strings.ToLower(val)
 			case "qop":
 				vals := strings.Split(val, ",")
 				if len(vals) > 0 {
@@ -88,8 +88,7 @@ func NewDigest(uri, challenge string) (*Digest, error) {
 		}
 	}
 	if d.nonce != "" {
-		// FIXME: Make algorithm comparison case-insensitive.
-		if d.algorithm != "MD5" && d.algorithm != "MD5-sess" {
+		if d.algorithm != "md5" && d.algorithm != "md5-sess" {
 			return nil, ErrAuthNotImpemented
 		}
 	}
@@ -140,7 +139,7 @@ func (d *Digest) Next() {
 	d.nc = fmt.Sprintf("%08x", d.count)
 	b := make([]byte, 8)
 	rand.Read(b)
-	d.cnonce = hex.EncodeToString(b)[:16]
+	d.cnonce = hex.EncodeToString(b)[:8]
 }
 
 func (d *Digest) response(verb string, body []byte) string {
@@ -154,13 +153,12 @@ func (d *Digest) response(verb string, body []byte) string {
 		out.WriteString(", response=\"")
 		out.WriteString(md5hex(colonnade(d.ha1, d.nonce, d.ha2)))
 	} else {
-		// FIXME: Make algorithm comparison case-insensitive.
-		if d.algorithm == "MD5-sess" {
+		if d.algorithm == "md5-sess" {
 			d.ha1 = md5hex(colonnade(d.ha1, d.nonce, d.cnonce))
 		}
-		out.WriteString(", qop=")
+		out.WriteString(", qop=\"")
 		out.WriteString(d.qop)
-		out.WriteString(", nc=")
+		out.WriteString("\", nc=")
 		out.WriteString(d.nc)
 		out.WriteString(", cnonce=\"")
 		out.WriteString(d.cnonce)
