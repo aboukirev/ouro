@@ -42,6 +42,22 @@ func (r *BitReader) Read(n uint) (val uint32, err error) {
 	return
 }
 
+// ReadByte attempts to read a single byte from the bit stream.
+// Returns an error if running into end of stream prematurely.
+// Useful to assign result directly to byte target.
+func (r *BitReader) ReadByte() (val byte, err error) {
+	v, err := r.Read(8)
+	return byte(v), err
+}
+
+// ReadFlag attempts to read a single bit from the bit stream.
+// Returns an error if running into end of stream prematurely.
+// Useful to assign result directly to boolean target.
+func (r *BitReader) ReadFlag() (val bool, err error) {
+	v, err := r.Read(1)
+	return v != 0, err
+}
+
 // ReadExponentialGolomb reads and decodes exponential golomb encoded value from a bit stream.
 // Returns an error if running into end of stream prematurely.
 func (r *BitReader) ReadExponentialGolomb() (val uint32, err error) {
