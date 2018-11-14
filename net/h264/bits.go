@@ -45,8 +45,11 @@ func (r *BitReader) Read(n uint) (val uint32, err error) {
 // ReadByte attempts to read a single byte from the bit stream.
 // Returns an error if running into end of stream prematurely.
 // Useful to assign result directly to byte target.
-func (r *BitReader) ReadByte() (val byte, err error) {
-	v, err := r.Read(8)
+func (r *BitReader) ReadByte(n uint) (val byte, err error) {
+	if n > 8 {
+		n = 8
+	}
+	v, err := r.Read(n)
 	return byte(v), err
 }
 
@@ -58,9 +61,9 @@ func (r *BitReader) ReadFlag() (val bool, err error) {
 	return v != 0, err
 }
 
-// ReadExponentialGolomb reads and decodes exponential golomb encoded value from a bit stream.
+// ReadUnsignedGolomb reads and decodes exponential golomb encoded value from a bit stream.
 // Returns an error if running into end of stream prematurely.
-func (r *BitReader) ReadExponentialGolomb() (val uint32, err error) {
+func (r *BitReader) ReadUnsignedGolomb() (val uint32, err error) {
 	var zeroes uint
 	for val, err = r.Read(1); val == 0; val, err = r.Read(1) {
 		if err != nil {
@@ -81,7 +84,7 @@ func (r *BitReader) ReadExponentialGolomb() (val uint32, err error) {
 // ReadSignedGolomb reads and decodes exponential golomb encoded value from a bit stream. and interprets it as signed value.
 // Returns an error if running into end of stream prematurely.
 func (r *BitReader) ReadSignedGolomb() (val int32, err error) {
-	uval, err := r.ReadExponentialGolomb()
+	uval, err := r.ReadUnsignedGolomb()
 	if err != nil {
 		return 0, err
 	}

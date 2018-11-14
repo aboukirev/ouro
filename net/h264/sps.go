@@ -43,27 +43,27 @@ type SPSInfo struct {
 func parseSPS(buf []byte) (sps *SPSInfo, err error) {
 	sps = &SPSInfo{}
 	br := NewBitReader(buf)
-	if sps.ProfileIdc, err = br.ReadByte(); err != nil {
+	if sps.ProfileIdc, err = br.ReadByte(8); err != nil {
 		return
 	}
 	// Leave chroma format at 0 if profile is 183
 	if sps.ProfileIdc != 183 {
 		sps.ChromaFormatIdc = 1
 	}
-	if sps.ConstraintSet, err = br.ReadByte(); err != nil {
+	if sps.ConstraintSet, err = br.ReadByte(8); err != nil {
 		return
 	}
 	// FIXME: Constraint set flags determine certain other values in the absense of overrides.
-	if sps.LevelIdc, err = br.ReadByte(); err != nil {
+	if sps.LevelIdc, err = br.ReadByte(8); err != nil {
 		return
 	}
-	if sps.SpsID, err = br.ReadExponentialGolomb(); err != nil {
+	if sps.SpsID, err = br.ReadUnsignedGolomb(); err != nil {
 		return
 	}
 	if sps.ProfileIdc == 100 || sps.ProfileIdc == 110 || sps.ProfileIdc == 122 || sps.ProfileIdc == 244 ||
 		sps.ProfileIdc == 44 || sps.ProfileIdc == 83 || sps.ProfileIdc == 86 || sps.ProfileIdc == 118 ||
 		sps.ProfileIdc == 128 || sps.ProfileIdc == 138 {
-		if sps.ChromaFormatIdc, err = br.ReadExponentialGolomb(); err != nil {
+		if sps.ChromaFormatIdc, err = br.ReadUnsignedGolomb(); err != nil {
 			return
 		}
 		if sps.ChromaFormatIdc == 3 {
@@ -71,10 +71,10 @@ func parseSPS(buf []byte) (sps *SPSInfo, err error) {
 				return
 			}
 		}
-		if sps.BitDepthLuma, err = br.ReadExponentialGolomb(); err != nil {
+		if sps.BitDepthLuma, err = br.ReadUnsignedGolomb(); err != nil {
 			return
 		}
-		if sps.BitDepthChroma, err = br.ReadExponentialGolomb(); err != nil {
+		if sps.BitDepthChroma, err = br.ReadUnsignedGolomb(); err != nil {
 			return
 		}
 		if sps.ZeroTransformBypass, err = br.ReadFlag(); err != nil {
@@ -106,14 +106,14 @@ func parseSPS(buf []byte) (sps *SPSInfo, err error) {
 			}
 		}
 	}
-	if sps.Log2MaxFrameNum, err = br.ReadExponentialGolomb(); err != nil {
+	if sps.Log2MaxFrameNum, err = br.ReadUnsignedGolomb(); err != nil {
 		return
 	}
-	if sps.PicOrderCntType, err = br.ReadExponentialGolomb(); err != nil {
+	if sps.PicOrderCntType, err = br.ReadUnsignedGolomb(); err != nil {
 		return
 	}
 	if sps.PicOrderCntType == 0 {
-		if sps.Log2MaxPicOrderCnt, err = br.ReadExponentialGolomb(); err != nil {
+		if sps.Log2MaxPicOrderCnt, err = br.ReadUnsignedGolomb(); err != nil {
 			return
 		}
 	} else {
@@ -126,7 +126,7 @@ func parseSPS(buf []byte) (sps *SPSInfo, err error) {
 		if sps.OffsetForTopToBottomField, err = br.ReadSignedGolomb(); err != nil {
 			return
 		}
-		if sps.NumRefFramesInPicOrderCntCycle, err = br.ReadExponentialGolomb(); err != nil {
+		if sps.NumRefFramesInPicOrderCntCycle, err = br.ReadUnsignedGolomb(); err != nil {
 			return
 		}
 		for i := uint32(0); i < sps.NumRefFramesInPicOrderCntCycle; i++ {
@@ -135,19 +135,19 @@ func parseSPS(buf []byte) (sps *SPSInfo, err error) {
 			}
 		}
 	}
-	if sps.MaxNumRefFrames, err = br.ReadExponentialGolomb(); err != nil {
+	if sps.MaxNumRefFrames, err = br.ReadUnsignedGolomb(); err != nil {
 		return
 	}
 	if sps.GapsInFrameNumValueAllowed, err = br.ReadFlag(); err != nil {
 		return
 	}
-	if sps.PicWidthInMbsMinus1, err = br.ReadExponentialGolomb(); err != nil {
+	if sps.PicWidthInMbsMinus1, err = br.ReadUnsignedGolomb(); err != nil {
 		return
 	}
-	if sps.PicHeightInMapUnitsMinus1, err = br.ReadExponentialGolomb(); err != nil {
+	if sps.PicHeightInMapUnitsMinus1, err = br.ReadUnsignedGolomb(); err != nil {
 		return
 	}
-	if sps.FrameMbsOnly, err = br.ReadExponentialGolomb(); err != nil {
+	if sps.FrameMbsOnly, err = br.ReadUnsignedGolomb(); err != nil {
 		return
 	}
 	if (sps.ConstraintSet&0x2) != 0 && (sps.ProfileIdc == 77 || sps.ProfileIdc == 88 || sps.ProfileIdc == 100) {
@@ -165,16 +165,16 @@ func parseSPS(buf []byte) (sps *SPSInfo, err error) {
 		return
 	}
 	if sps.FrameCropping {
-		if sps.FrameCropLeftOffset, err = br.ReadExponentialGolomb(); err != nil {
+		if sps.FrameCropLeftOffset, err = br.ReadUnsignedGolomb(); err != nil {
 			return
 		}
-		if sps.FrameCropRightOffset, err = br.ReadExponentialGolomb(); err != nil {
+		if sps.FrameCropRightOffset, err = br.ReadUnsignedGolomb(); err != nil {
 			return
 		}
-		if sps.FrameCropTopOffset, err = br.ReadExponentialGolomb(); err != nil {
+		if sps.FrameCropTopOffset, err = br.ReadUnsignedGolomb(); err != nil {
 			return
 		}
-		if sps.FrameCropBottomOffset, err = br.ReadExponentialGolomb(); err != nil {
+		if sps.FrameCropBottomOffset, err = br.ReadUnsignedGolomb(); err != nil {
 			return
 		}
 	}
@@ -203,5 +203,5 @@ func parseSPS(buf []byte) (sps *SPSInfo, err error) {
 	cropUnitY := (2 - sps.FrameMbsOnly) * subHeightC
 	sps.Width = sps.Width - (sps.FrameCropLeftOffset+sps.FrameCropRightOffset)*cropUnitX
 	sps.Height = sps.Height - (sps.FrameCropTopOffset+sps.FrameCropBottomOffset)*cropUnitY
-	return sps, nil
+	return
 }
