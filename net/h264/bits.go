@@ -1,7 +1,12 @@
 package h264
 
 import (
+	"errors"
 	"io"
+)
+
+var (
+	errMissingTrailingBits = errors.New("RBSP is missing trailing stop and align bits")
 )
 
 // BitReader implements bit stream reading for H.264 network layer processing.
@@ -149,4 +154,20 @@ func (r *BitReader) SkipGolomb() (err error) {
 	}
 	// Last read bit was 1.  Read (zeroes) more.
 	return r.SkipBits(zeroes)
+}
+
+// TrailingBits ensures that remaining bits in the buffer consist of stop bit and
+// variable number of aligning zero-bits;
+func (r *BitReader) TrailingBits() (err error) {
+	v, err := r.ReadBits(1)
+	if err != nil || v == 0 {
+		return errMissingTrailingBits
+	}
+	for r.bitn != 0 && r.bitn != 8 {
+		v, err := r.ReadBits(1)
+		if err != nil || v != 0 {
+			return errMissingTrailingBits
+		}
+	}
+	return nil
 }
