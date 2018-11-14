@@ -13,6 +13,7 @@ func TestParseSPSHiDef(t *testing.T) {
 		t.FailNow()
 	}
 	t.Logf("bit_depth_luma=%d, bit_depth_chroma=%d", sps.BitDepthLuma+8, sps.BitDepthChroma+8)
+	t.Logf("seq_scaling_list_present=%d, use_default_scaling_matrix=%v", sps.ScalingListPresent, sps.UseDefaultScalingMatrix)
 	t.Logf("frame_mbs_only=%d, chroma_format_idc=%d", sps.FrameMbsOnly, sps.ChromaFormatIdc)
 	if sps.Width != 1280 {
 		t.Errorf("Wrong picture width %d, expected 1280.", sps.Width)
@@ -32,6 +33,7 @@ func TestParseSPSStdDef(t *testing.T) {
 	}
 	// t.Logf("%#v", sps)
 	t.Logf("bit_depth_luma=%d, bit_depth_chroma=%d", sps.BitDepthLuma+8, sps.BitDepthChroma+8)
+	t.Logf("seq_scaling_list_present=%d, use_default_scaling_matrix=%v", sps.ScalingListPresent, sps.UseDefaultScalingMatrix)
 	t.Logf("frame_mbs_only=%d, chroma_format_idc=%d", sps.FrameMbsOnly, sps.ChromaFormatIdc)
 	if sps.Width != 640 {
 		t.Errorf("Wrong picture width %d, expected 640.", sps.Width)
@@ -50,6 +52,7 @@ func TestParseSPSHalfDef(t *testing.T) {
 		t.FailNow()
 	}
 	t.Logf("bit_depth_luma=%d, bit_depth_chroma=%d", sps.BitDepthLuma+8, sps.BitDepthChroma+8)
+	t.Logf("seq_scaling_list_present=%d, use_default_scaling_matrix=%v", sps.ScalingListPresent, sps.UseDefaultScalingMatrix)
 	t.Logf("frame_mbs_only=%d, chroma_format_idc=%d", sps.FrameMbsOnly, sps.ChromaFormatIdc)
 	if sps.Width != 200 {
 		t.Errorf("Wrong picture width %d, expected 200.", sps.Width)

@@ -6,7 +6,7 @@ type SPSInfo struct {
 	ProfileIdc                     byte
 	ConstraintSet                  byte
 	LevelIdc                       byte
-	Id                             uint32
+	SpsID                          uint32
 	ChromaFormatIdc                uint32
 	SeparateColorPlane             bool
 	BitDepthLuma                   uint32
@@ -14,6 +14,8 @@ type SPSInfo struct {
 	ZeroTransformBypass            bool
 	ScalingMatrixPresent           bool
 	ScalingListPresent             uint32
+	ScalingList                    [6*16 + 6*64]int32
+	UseDefaultScalingMatrix        [12]bool
 	Log2MaxFrameNum                uint32
 	PicOrderCntType                uint32
 	Log2MaxPicOrderCnt             uint32
@@ -55,7 +57,7 @@ func parseSPS(buf []byte) (sps *SPSInfo, err error) {
 	if sps.LevelIdc, err = br.ReadByte(); err != nil {
 		return
 	}
-	if sps.Id, err = br.ReadExponentialGolomb(); err != nil {
+	if sps.SpsID, err = br.ReadExponentialGolomb(); err != nil {
 		return
 	}
 	if sps.ProfileIdc == 100 || sps.ProfileIdc == 110 || sps.ProfileIdc == 122 || sps.ProfileIdc == 244 ||
@@ -82,13 +84,25 @@ func parseSPS(buf []byte) (sps *SPSInfo, err error) {
 			return
 		}
 		if sps.ScalingMatrixPresent {
+			var present bool
+			nlists := 8
 			if sps.ChromaFormatIdc == 3 {
-				sps.ScalingListPresent, err = br.Read(12)
-			} else {
-				sps.ScalingListPresent, err = br.Read(8)
+				nlists = 12
 			}
-			if err != nil {
-				return
+			for i, off, size := 0, 0, 16; i < nlists; i++ {
+				if present, err = br.ReadFlag(); err != nil {
+					return
+				}
+				if present {
+					sps.ScalingListPresent |= 1 << uint32(i)
+					if sps.UseDefaultScalingMatrix[i], err = br.ReadScalingList(sps.ScalingList[off : off+size]); err != nil {
+						return
+					}
+				}
+				off += size
+				if i >= 5 {
+					size = 64
+				}
 			}
 		}
 	}

@@ -90,3 +90,28 @@ func (r *BitReader) ReadSignedGolomb() (val int32, err error) {
 	}
 	return int32((uval + 1) / 2), nil
 }
+
+// ReadScalingList reads scaling list into a slice and returns either an indicator
+// to use default matrix or an error.  The length of the list to read is driven
+// by the length of the slice.
+func (r *BitReader) ReadScalingList(list []int32) (useDefault bool, err error) {
+	lastScale := int32(8)
+	nextScale := int32(8)
+	var delta int32
+	for j := 0; j < len(list); j++ {
+		if nextScale != 0 {
+			if delta, err = r.ReadSignedGolomb(); err != nil {
+				return
+			}
+			nextScale = (lastScale + delta + 256) % 256
+			useDefault = j == 0 && nextScale == 0
+		}
+		if nextScale == 0 {
+			list[j] = lastScale
+		} else {
+			list[j] = nextScale
+			lastScale = nextScale
+		}
+	}
+	return
+}
