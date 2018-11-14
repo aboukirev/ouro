@@ -43,18 +43,18 @@ type SPSInfo struct {
 func parseSPS(buf []byte) (sps *SPSInfo, err error) {
 	sps = &SPSInfo{}
 	br := NewBitReader(buf)
-	if sps.ProfileIdc, err = br.ReadByte(8); err != nil {
+	if sps.ProfileIdc, err = br.ReadByteBits(8); err != nil {
 		return
 	}
 	// Leave chroma format at 0 if profile is 183
 	if sps.ProfileIdc != 183 {
 		sps.ChromaFormatIdc = 1
 	}
-	if sps.ConstraintSet, err = br.ReadByte(8); err != nil {
+	if sps.ConstraintSet, err = br.ReadByteBits(8); err != nil {
 		return
 	}
 	// FIXME: Constraint set flags determine certain other values in the absense of overrides.
-	if sps.LevelIdc, err = br.ReadByte(8); err != nil {
+	if sps.LevelIdc, err = br.ReadByteBits(8); err != nil {
 		return
 	}
 	if sps.SpsID, err = br.ReadUnsignedGolomb(); err != nil {

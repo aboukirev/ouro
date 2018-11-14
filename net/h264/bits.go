@@ -22,9 +22,9 @@ func (r *BitReader) Available() uint {
 	return (r.count-r.byten)*8 - r.bitn
 }
 
-// Read attempts to read requested number of bits from the bit stream.
+// ReadBits attempts to read requested number of bits from the bit stream.
 // Returns an error if running into end of stream prematurely.
-func (r *BitReader) Read(n uint) (val uint32, err error) {
+func (r *BitReader) ReadBits(n uint) (val uint32, err error) {
 	if n > 32 || n > r.Available() {
 		return 0, io.ErrUnexpectedEOF
 	}
@@ -42,14 +42,14 @@ func (r *BitReader) Read(n uint) (val uint32, err error) {
 	return
 }
 
-// ReadByte attempts to read a single byte from the bit stream.
+// ReadByteBits attempts to read a single byte from the bit stream.
 // Returns an error if running into end of stream prematurely.
 // Useful to assign result directly to byte target.
-func (r *BitReader) ReadByte(n uint) (val byte, err error) {
+func (r *BitReader) ReadByteBits(n uint) (val byte, err error) {
 	if n > 8 {
 		n = 8
 	}
-	v, err := r.Read(n)
+	v, err := r.ReadBits(n)
 	return byte(v), err
 }
 
@@ -57,7 +57,7 @@ func (r *BitReader) ReadByte(n uint) (val byte, err error) {
 // Returns an error if running into end of stream prematurely.
 // Useful to assign result directly to boolean target.
 func (r *BitReader) ReadFlag() (val bool, err error) {
-	v, err := r.Read(1)
+	v, err := r.ReadBits(1)
 	return v != 0, err
 }
 
@@ -65,7 +65,7 @@ func (r *BitReader) ReadFlag() (val bool, err error) {
 // Returns an error if running into end of stream prematurely.
 func (r *BitReader) ReadUnsignedGolomb() (val uint32, err error) {
 	var zeroes uint
-	for val, err = r.Read(1); val == 0; val, err = r.Read(1) {
+	for val, err = r.ReadBits(1); val == 0; val, err = r.ReadBits(1) {
 		if err != nil {
 			// Reached end of stream while all the read bits are zeroes
 			return
@@ -73,7 +73,7 @@ func (r *BitReader) ReadUnsignedGolomb() (val uint32, err error) {
 		zeroes++
 	}
 	// Last read bit was 1.  Read (zeroes) more.
-	val, err = r.Read(zeroes)
+	val, err = r.ReadBits(zeroes)
 	if err != nil {
 		return
 	}
@@ -119,9 +119,9 @@ func (r *BitReader) ReadScalingList(list []int32) (useDefault bool, err error) {
 	return
 }
 
-// Skip attempts to skip requested number of bits in the bit stream.
+// SkipBits attempts to skip requested number of bits in the bit stream.
 // Returns an error if running into end of stream prematurely.
-func (r *BitReader) Skip(n uint) (err error) {
+func (r *BitReader) SkipBits(n uint) (err error) {
 	if n > 32 || n > r.Available() {
 		return io.ErrUnexpectedEOF
 	}
@@ -140,7 +140,7 @@ func (r *BitReader) Skip(n uint) (err error) {
 func (r *BitReader) SkipGolomb() (err error) {
 	var zeroes uint
 	var val uint32
-	for val, err = r.Read(1); val == 0; val, err = r.Read(1) {
+	for val, err = r.ReadBits(1); val == 0; val, err = r.ReadBits(1) {
 		if err != nil {
 			// Reached end of stream while all the read bits are zeroes
 			return
@@ -148,5 +148,5 @@ func (r *BitReader) SkipGolomb() (err error) {
 		zeroes++
 	}
 	// Last read bit was 1.  Read (zeroes) more.
-	return r.Skip(zeroes)
+	return r.SkipBits(zeroes)
 }
