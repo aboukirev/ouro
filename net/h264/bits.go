@@ -115,3 +115,35 @@ func (r *BitReader) ReadScalingList(list []int32) (useDefault bool, err error) {
 	}
 	return
 }
+
+// Skip attempts to skip requested number of bits in the bit stream.
+// Returns an error if running into end of stream prematurely.
+func (r *BitReader) Skip(n uint) (err error) {
+	if n > 32 || n > r.Available() {
+		return io.ErrUnexpectedEOF
+	}
+	bits := 8 - r.bitn
+	for n > bits {
+		// No check here as we already know there is enough data from AvailableBits().
+		r.byten++
+		bits += 8
+	}
+	r.bitn = 8 - (bits - n)
+	return
+}
+
+// SkipGolomb decodes exponential golomb encoded value in the bit stream and skips it.
+// Returns an error if running into end of stream prematurely.
+func (r *BitReader) SkipGolomb() (err error) {
+	var zeroes uint
+	var val uint32
+	for val, err = r.Read(1); val == 0; val, err = r.Read(1) {
+		if err != nil {
+			// Reached end of stream while all the read bits are zeroes
+			return
+		}
+		zeroes++
+	}
+	// Last read bit was 1.  Read (zeroes) more.
+	return r.Skip(zeroes)
+}
