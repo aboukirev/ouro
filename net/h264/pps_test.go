@@ -8,7 +8,7 @@ func TestParsePPS(t *testing.T) {
 	data := []byte{
 		0xee, 0x3c, 0x30, 0x00,
 	}
-	pps, err := parsePPS(data, 1)
+	pps, err := ParsePPS(data, 1)
 	if err != nil {
 		t.Error(err)
 	}

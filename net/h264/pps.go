@@ -39,7 +39,10 @@ type (
 	}
 )
 
-func parsePPS(buf []byte, chromaFormatIdc uint32) (pps *PPSInfo, err error) {
+// ParsePPS retrieves Picture Parameter Set information from a given buffer.
+// Buffer can be out-of-band, coming from sprop-parameter-sets property in SDP.
+// Ic ould also come in-band in a NAL with respective type.
+func ParsePPS(buf []byte, chromaFormatIdc uint32) (pps *PPSInfo, err error) {
 	pps = &PPSInfo{}
 	br := NewBitReader(buf)
 	if pps.PpsID, err = br.ReadUnsignedGolomb(); err != nil {

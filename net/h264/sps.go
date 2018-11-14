@@ -40,7 +40,10 @@ type SPSInfo struct {
 	Height                         uint32
 }
 
-func parseSPS(buf []byte) (sps *SPSInfo, err error) {
+// ParseSPS retrieves Sequence Parameter Set information from a given buffer.
+// Buffer can be out-of-band, coming from sprop-parameter-sets property in SDP.
+// Ic ould also come in-band in a NAL with respective type.
+func ParseSPS(buf []byte) (sps *SPSInfo, err error) {
 	sps = &SPSInfo{}
 	br := NewBitReader(buf)
 	if sps.ProfileIdc, err = br.ReadByteBits(8); err != nil {
