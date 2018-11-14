@@ -210,11 +210,20 @@ func (s *NALSink) parseMTAP(typ byte, buf []byte, ts uint32) error {
 
 // Push RTP payload parsing NAL units and handling aggregation and fragmenting.
 func (s *NALSink) Push(buf []byte, ts uint32) error {
+	// TODO: Detect Annex B vs AVC payloads.  If starts with Annex B start code then split on start code.
+	for _, nal := range splitAnnexB(buf) {
+		if err := s.parseNAL(nal, ts); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *NALSink) parseNAL(buf []byte, ts uint32) error {
 	s.Units = s.Units[:0]
 	if len(buf) < 1 {
 		return errPacketTooShort
 	}
-	// TODO: Detect Annex B vs AVC payloads.  If starts with Annex B start code then split on start code.
 
 	typ := buf[0] & 0x1F
 	switch typ {
