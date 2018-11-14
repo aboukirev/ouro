@@ -9,7 +9,7 @@ func TestAvailable(t *testing.T) {
 	r := NewBitReader(data)
 	n := r.Available()
 	if n != 16 {
-		t.FailNow()
+		t.Errorf("%d bits available, expected 16.", n)
 	}
 }
 
@@ -18,42 +18,42 @@ func TestRead(t *testing.T) {
 	r := NewBitReader(data)
 	v, err := r.Read(3)
 	if err != nil {
-		t.FailNow()
+		t.Error(err)
 	}
 	if v != 0x2 {
-		t.FailNow()
+		t.Errorf("Read value %x, expected 0x2", v)
 	}
 	v, err = r.Read(2)
 	if v != 0x1 {
-		t.FailNow()
+		t.Errorf("Read value %x, expected 0x1", v)
 	}
 	v, err = r.Read(7)
 	if v != 0x53 {
-		t.FailNow()
+		t.Errorf("Read value %x, expected 0x53", v)
 	}
 	n := r.Available()
 	if n != 4 {
-		t.FailNow()
+		t.Errorf("%d bits available, expected 4", n)
 	}
 	v, err = r.Read(2)
 	if v != 0x0 {
-		t.FailNow()
+		t.Errorf("Read value %x, expected 0x0", v)
 	}
 	v, err = r.Read(1)
 	if v != 0x1 {
-		t.FailNow()
+		t.Errorf("Read value %x, expected 0x1", v)
 	}
 	v, err = r.Read(1)
 	if v != 0x0 {
-		t.FailNow()
+		t.Errorf("Read value %x, expected 0x0", v)
 	}
 	n = r.Available()
 	if n != 0 {
-		t.FailNow()
+		t.Errorf("%d bits available, expected 0", n)
 	}
 	v, err = r.Read(1)
 	if err == nil {
-		t.FailNow()
+		t.Error("Expected error reading past the end of the buffer, got nothing")
 	}
 }
 
@@ -70,10 +70,10 @@ func TestSignedGolomb(t *testing.T) {
 		r := NewBitReader(data[i : i+1])
 		v, err := r.ReadSignedGolomb()
 		if err != nil {
-			t.FailNow()
+			t.Error(err)
 		}
 		if v != expected[i] {
-			t.FailNow()
+			t.Errorf("Read value %x, expected %x", v, expected[i])
 		}
 	}
 }
