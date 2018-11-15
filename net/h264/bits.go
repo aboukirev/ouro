@@ -156,9 +156,9 @@ func (r *BitReader) SkipGolomb() (err error) {
 	return r.SkipBits(zeroes)
 }
 
-// TrailingBits ensures that remaining bits in the buffer consist of stop bit and
+// SkipTrailingBits ensures that remaining bits in the buffer consist of stop bit and
 // variable number of aligning zero-bits;
-func (r *BitReader) TrailingBits() (err error) {
+func (r *BitReader) SkipTrailingBits() (err error) {
 	v, err := r.ReadBits(1)
 	if err != nil || v == 0 {
 		return errMissingTrailingBits
@@ -170,4 +170,18 @@ func (r *BitReader) TrailingBits() (err error) {
 		}
 	}
 	return nil
+}
+
+// ReadPayloadParam parses payload type and size of SEI message from bit reader.
+func (r *BitReader) ReadPayloadParam() (val uint32, err error) {
+	var v uint32
+	for {
+		if v, err = r.ReadBits(8); err != nil {
+			return
+		}
+		val += v
+		if v != 0xff {
+			return
+		}
+	}
 }
