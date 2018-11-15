@@ -311,9 +311,11 @@ func (s *Session) handleRtsp() (err error) {
 			// Parse sprop parameter sets from the SDP.
 			i := len(s.transp)
 			if i < len(s.feeds) {
-				// TODO: What if one or both are missing?  Handle errors?
-				t.Sets.ParseSPS(s.feeds[i].SpropParameterSets[0])
-				t.Sets.ParsePPS(s.feeds[i].SpropParameterSets[1])
+				for _, b := range s.feeds[i].SpropParameterSets {
+					if err := t.Sets.ParseSprop(b); err != nil {
+						return err
+					}
+				}
 			}
 			s.transp = append(s.transp, t)
 		} else if rsp.StatusCode != RtspUnauthorized {

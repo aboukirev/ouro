@@ -407,6 +407,21 @@ func (s *ParameterSets) ParsePPS(buf []byte) (err error) {
 	return
 }
 
+// ParseSprop analyzes value from SDP sprop parameter sets where first byte is a NAL header.
+// To simplify code we do not fully queue and process NAL.
+func (s *ParameterSets) ParseSprop(buf []byte) (err error) {
+	if buf == nil || len(buf) == 0 {
+		return
+	}
+	typ := buf[0] & 0x1F
+	if typ == typeSPS {
+		return s.ParseSPS(buf[1:])
+	} else if typ == typePPS {
+		return s.ParsePPS(buf[1:])
+	}
+	return
+}
+
 // GetSPS looks up SPS by id among currently available parameter sets.
 func (s *ParameterSets) GetSPS(id uint32) (sps *SPSInfo, ok bool) {
 	sps, ok = s.spset[id]
