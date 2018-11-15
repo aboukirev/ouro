@@ -308,6 +308,13 @@ func (s *Session) handleRtsp() (err error) {
 					return err
 				}
 			}
+			// Parse sprop parameter sets from the SDP.
+			i := len(s.transp)
+			if i < len(s.feeds) {
+				// TODO: What if one or both are missing?  Handle errors?
+				t.Sets.ParseSPS(s.feeds[i].SpropParameterSets[0])
+				t.Sets.ParsePPS(s.feeds[i].SpropParameterSets[1])
+			}
 			s.transp = append(s.transp, t)
 		} else if rsp.StatusCode != RtspUnauthorized {
 			// Stream is not available even though SDP told us it is.

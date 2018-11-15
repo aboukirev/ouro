@@ -12,6 +12,8 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+
+	"github.com/aboukirev/ouro/net/h264"
 )
 
 var (
@@ -44,6 +46,7 @@ type (
 		Source        string
 		SSRC          string
 		Mode          string
+		Sets          *h264.ParameterSets
 	}
 )
 
@@ -74,7 +77,11 @@ type (
 
 // NewTransport creates default transport for media.
 func NewTransport(proto int, port int) *Transport {
-	t := &Transport{IsAppend: false, Mode: "PLAY"}
+	t := &Transport{
+		IsAppend: false,
+		Mode:     "PLAY",
+		Sets:     h264.NewParameterSets(),
+	}
 	switch proto {
 	case ProtoTCP, ProtoHTTP:
 		t.IsTCP = true
