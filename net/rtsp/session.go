@@ -7,8 +7,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/aboukirev/ouro/net/sdp"
 )
 
 var (
@@ -34,8 +32,8 @@ type (
 		queue   Queue      // RTSP requests that we are waiting responses for
 		done    chan struct{}
 		session string
-		feeds   []sdp.Media
-		transp  []*Transport
+		feeds   []*Feed
+		feedidx int
 		verbs   map[string]struct{}
 		last    time.Time
 		cseq    int
@@ -132,15 +130,14 @@ func (s *Session) Describe() error {
 
 // Setup issues SETUP command for all playable media.
 func (s *Session) Setup() error {
-	var t *Transport
-	for i := range s.feeds {
-		t = NewTransport(s.Proto, i*2)
+	s.feedidx = 0
+	for _, f := range s.feeds {
 		// Setup is done on a different URI that accounts for Control in media.
-		uri := s.feeds[i].Control
+		uri := f.Control
 		if !strings.HasPrefix(uri, "rtsp://") {
 			uri = s.BaseURI + "/" + uri
 		}
-		err := s.command(VerbSetup, uri, Headers{HeaderTransport: t.String()})
+		err := s.command(VerbSetup, uri, Headers{HeaderTransport: f.TransportHeader()})
 		if err != nil {
 			return err
 		}
@@ -282,7 +279,9 @@ func (s *Session) handleRtsp() (err error) {
 		}
 	case VerbDescribe:
 		if rsp.Body != nil {
-			s.feeds = sdp.Parse(rsp.Body)
+			if s.feeds, err = ParseFeeds(s.Proto, rsp.Body); err != nil {
+				return err
+			}
 			return s.Setup()
 		}
 	case VerbPause:
@@ -295,34 +294,26 @@ func (s *Session) handleRtsp() (err error) {
 		}
 	case VerbSetup:
 		if rsp.StatusCode == RtspOK {
-			t := NewTransport(ProtoTCP, 0)
-			if err = t.Parse(rsp.Header.Get(HeaderTransport)); err != nil {
+			f := s.feeds[s.feedidx]
+			s.feedidx++
+			if err = f.TransportSetup(rsp.Header.Get(HeaderTransport)); err != nil {
 				return err
 			}
-			if !t.IsTCP {
-				ch := byte(len(s.transp)) * 2
-				if err := s.AddSink(ch, t.Port.One); err != nil {
-					return err
-				}
-				if err := s.AddSink(ch+1, t.Port.Two); err != nil {
-					return err
-				}
-			}
-			// Parse sprop parameter sets from the SDP.
-			i := len(s.transp)
-			if i < len(s.feeds) {
-				for _, b := range s.feeds[i].SpropParameterSets {
-					if err := t.Sets.ParseSprop(b); err != nil {
-						return err
-					}
-				}
-			}
-			s.transp = append(s.transp, t)
+			// TODO: Move this to the Feed.
+			// if !t.IsTCP {
+			// 	ch := byte(s.feedidx) * 2
+			// 	if err := s.AddSink(ch, t.Port.One); err != nil {
+			// 		return err
+			// 	}
+			// 	if err := s.AddSink(ch+1, t.Port.Two); err != nil {
+			// 		return err
+			// 	}
+			// }
 		} else if rsp.StatusCode != RtspUnauthorized {
 			// Stream is not available even though SDP told us it is.
-			s.transp = append(s.transp, nil)
+			s.feedidx++
 		}
-		if len(s.transp) == len(s.feeds) {
+		if s.feedidx >= len(s.feeds) {
 			s.notify(StageReady)
 			s.Start(s.Data, s.Control)
 		}
