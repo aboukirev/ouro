@@ -2,9 +2,9 @@ package h264
 
 const shortStartCodeLen = 3
 
-// splitAnnexB attempts to recognize a sequence of NALUs separated by start codes in the buffer.
+// SplitAnnexB attempts to recognize a sequence of NALUs separated by start codes in the buffer.
 // Returns a list of raw/unparsed units with emulation bytes removed.
-func splitAnnexB(buf []byte) [][]byte {
+func SplitAnnexB(buf []byte) [][]byte {
 	units := [][]byte{}
 	end := len(buf) - shortStartCodeLen
 	prev := 0
@@ -16,10 +16,10 @@ func splitAnnexB(buf []byte) [][]byte {
 			// Do not insert 0-length slices.
 			if off > 0 && buf[off-1] == 0 {
 				if off > prev+1 {
-					units = append(units, parseEBSP(buf[prev:off-1]))
+					units = append(units, EBSPToRaw(buf[prev:off-1]))
 				}
 			} else if off > prev {
-				units = append(units, parseEBSP(buf[prev:off]))
+				units = append(units, EBSPToRaw(buf[prev:off]))
 			}
 			off += 3
 			prev = off
@@ -27,18 +27,16 @@ func splitAnnexB(buf []byte) [][]byte {
 			off++
 		}
 	}
-	units = append(units, parseEBSP(buf[prev:]))
+	units = append(units, EBSPToRaw(buf[prev:]))
 	return units
 }
 
-// parseEBSP removes emulation prevention bytes from the buffer transforming
+// EBSPToRaw removes emulation prevention bytes from the buffer transforming
 // Encapsulated Byte Sequence Payload (EBSP) into Raw Byte Sequence Payload (RBSP).
-func parseEBSP(buf []byte) []byte {
+func EBSPToRaw(buf []byte) []byte {
 	zero := byte(0)
 	size := len(buf)
-	// Modified value buffer overlays the original buffer.  No allocation occurs.
-	// This works because RBSP is always same or shorter than EBSP.
-	rbsp := buf[:0]
+	rbsp := make([]byte, 0, size)
 	for off := 0; off < size; {
 		if size-off >= 3 && buf[off] == 0 && buf[off+1] == 0 && buf[off+2] == 3 {
 			// Found emulation prevention byte.
@@ -50,4 +48,23 @@ func parseEBSP(buf []byte) []byte {
 		}
 	}
 	return rbsp
+}
+
+// RBSPToEncapsulated adds emulation prevention bytes to the buffer transforming
+// Raw Byte Sequence Payload (RBSP) into Encapsulated Byte Sequence Payload (EBSP).
+func RBSPToEncapsulated(buf []byte) []byte {
+	zero := byte(0)
+	epb := byte(3)
+	size := len(buf)
+	ebsp := make([]byte, 0, size*2)
+	for off := 0; off < size; {
+		if size-off >= 2 && buf[off] == 0 && buf[off+1] == 0 && buf[off+2] <= 3 {
+			// Add emulation prevention bytes.
+			ebsp = append(ebsp, zero, zero, epb)
+			off += 2
+		}
+		ebsp = append(ebsp, buf[off])
+		off++
+	}
+	return ebsp
 }
