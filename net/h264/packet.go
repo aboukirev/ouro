@@ -5,8 +5,6 @@ import (
 	"errors"
 )
 
-// TODO: Parse Annex B NAL sequences.  Currently code assumes raw NALs where length of payload is declared in container.
-
 // Type   Packet     Type name
 // ------------------------------------------------
 // 0      undefined  -
