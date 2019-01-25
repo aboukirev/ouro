@@ -84,7 +84,7 @@ func (r *Request) Pack() []byte {
 		buf.WriteString(val)
 		buf.Write(crnl)
 	}
-	if r.Session != "" {
+	if r.Session != "" && r.Verb != VerbOptions && r.Verb != VerbSetup {
 		buf.WriteString(HeaderSession)
 		buf.Write(colsp)
 		buf.WriteString(r.Session)
