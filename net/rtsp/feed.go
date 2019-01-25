@@ -11,6 +11,7 @@ type (
 	Feed struct {
 		sdp.Media
 		transp *Transport
+		cseq   int
 		IsSet  bool
 		Sets   *h264.ParameterSets
 	}

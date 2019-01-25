@@ -14,20 +14,12 @@ var (
 )
 
 type (
-	// RawPacket represents channel number and raw data buffer of RTP/RTCP packet.
-	RawPacket struct {
-		Channel byte
-		Payload []byte
-	}
-
 	// Session maintains RTSP session and workflow.
 	Session struct {
 		*Conn
 		sync.Mutex
-		Stage   chan int
-		Data    chan RawPacket
-		Control chan RawPacket
-		stage   int        // Current stage in state machine.
+		stage   int        // Current stage.
+		State   chan int   // Stage signaller.
 		auth    DigestAuth // Callback function to calculate digest authentication for a given verb/method.
 		queue   Queue      // RTSP requests that we are waiting responses for
 		done    chan struct{}
@@ -43,12 +35,10 @@ type (
 // NewSession returns new RTSP session manager.
 func NewSession() *Session {
 	return &Session{
-		Stage:   make(chan int),
-		Data:    make(chan RawPacket, 20),
-		Control: make(chan RawPacket),
-		stage:   StageInit,
-		queue:   make(Queue),
-		verbs:   make(map[string]struct{}, 11),
+		State: make(chan int),
+		stage: StageInit,
+		queue: make(Queue),
+		verbs: make(map[string]struct{}, 11),
 	}
 }
 
@@ -80,7 +70,6 @@ func (s *Session) authorize(challenge string) error {
 func (s *Session) enqueue(req *Request) {
 	s.Lock()
 	defer s.Unlock()
-	s.cseq++
 	req.Cseq = s.cseq
 	req.Session = s.session
 	s.queue[req.Cseq] = req
@@ -107,6 +96,7 @@ func (s *Session) command(verb, uri string, headers Headers) error {
 	if s.auth != nil {
 		req.Auth = s.auth(req.Verb, nil)
 	}
+	s.cseq++
 	s.enqueue(req)
 	buf := req.Pack()
 
@@ -130,17 +120,17 @@ func (s *Session) Describe() error {
 
 // Setup issues SETUP command for all playable media.
 func (s *Session) Setup() error {
-	s.feedidx = 0
-	for _, f := range s.feeds {
+	for i := range s.feeds {
 		// Setup is done on a different URI that accounts for Control in media.
-		uri := f.Control
+		uri := s.feeds[i].Control
 		if !strings.HasPrefix(uri, "rtsp://") {
 			uri = s.BaseURI + "/" + uri
 		}
-		err := s.command(VerbSetup, uri, Headers{HeaderTransport: f.TransportHeader()})
+		err := s.command(VerbSetup, uri, Headers{HeaderTransport: s.feeds[i].TransportHeader()})
 		if err != nil {
 			return err
 		}
+		s.feeds[i].cseq = s.cseq
 	}
 	return nil
 }
@@ -157,7 +147,7 @@ func (s *Session) Pause() error {
 
 // Teardown handles client TEARDOWN request in RTSP.
 func (s *Session) Teardown() error {
-	s.notify(StageDone)
+	// s.notify(StageDone)
 	return s.command(VerbTeardown, s.BaseURI, nil)
 }
 
@@ -174,24 +164,32 @@ func (s *Session) KeepAlive() error {
 	return nil
 }
 
-func (s *Session) receive() (ch byte, buf []byte, err error) {
+func (s *Session) receive() error {
+	var ch byte
+	var buf []byte
 	b, err := s.Peek(1)
 	if err != nil {
-		return
+		return err
 	}
 	if b[0] == '$' {
 		s.Discard(1)
+		// RTSP allows for up to 8 transports so valid ch values are limited.
 		if ch, err = s.ReadByte(); err != nil {
-			return 0, nil, err
+			return err
 		}
 		length, err := s.ReadUint16()
 		if err != nil {
-			return 0, nil, err
+			return err
 		}
 		buf, err = s.ReadBytes(int(length))
-		return ch, buf, err
+		if err == nil {
+			select {
+			case s.Data <- RawPacket{Channel: ch, Payload: append([]byte{}, buf...)}:
+			}
+		}
+		return err
 	}
-	return 255, nil, nil
+	return s.handleRtsp()
 }
 
 func (s *Session) process() {
@@ -203,23 +201,7 @@ func (s *Session) process() {
 			if err := s.KeepAlive(); err != nil && s.stage == StageDone {
 				return
 			}
-			ch, buf, err := s.receive()
-			if err == nil {
-				// RTSP allows for up to 8 transports.
-				switch ch {
-				case 255:
-					err = s.handleRtsp()
-				case 0, 2, 4, 6, 8, 10, 12, 14:
-					select {
-					case s.Data <- RawPacket{Channel: ch, Payload: append([]byte{}, buf...)}:
-					}
-				case 1, 3, 5, 7, 9, 11, 13, 15:
-					select {
-					case s.Control <- RawPacket{Channel: ch, Payload: append([]byte{}, buf...)}:
-					}
-				}
-			}
-			if err != nil && err != errTimeout {
+			if err := s.receive(); err != nil && !isTimeoutOrTemp(err) {
 				log.Println(err)
 				return
 			}
@@ -231,7 +213,7 @@ func (s *Session) process() {
 func (s *Session) notify(stage int) {
 	s.stage = stage
 	select {
-	case s.Stage <- stage:
+	case s.State <- stage:
 	}
 }
 
@@ -254,6 +236,9 @@ func (s *Session) handleRtsp() (err error) {
 			return err
 		}
 		req.Auth = s.auth(req.Verb, nil)
+		// Treat this as retransmit of the same message.
+		// If the following line is uncommented, it will break matching responses to transport setup commands based on checking CSeq.
+		// s.cseq++
 		s.enqueue(req)
 		buf := req.Pack()
 
@@ -292,32 +277,43 @@ func (s *Session) handleRtsp() (err error) {
 		if rsp.StatusCode == RtspOK {
 			s.notify(StagePlay)
 		}
-	case VerbSetup:
+	case VerbTeardown:
 		if rsp.StatusCode == RtspOK {
-			f := s.feeds[s.feedidx]
-			s.feedidx++
-			if err = f.TransportSetup(rsp.Header.Get(HeaderTransport)); err != nil {
-				return err
-			}
-			// TODO: Move this to the Feed.
-			// if !t.IsTCP {
-			// 	ch := byte(s.feedidx) * 2
-			// 	if err := s.AddSink(ch, t.Port.One); err != nil {
-			// 		return err
-			// 	}
-			// 	if err := s.AddSink(ch+1, t.Port.Two); err != nil {
-			// 		return err
-			// 	}
-			// }
-		} else if rsp.StatusCode != RtspUnauthorized {
-			// Stream is not available even though SDP told us it is.
-			s.feedidx++
+			s.notify(StageDone)
 		}
-		if s.feedidx >= len(s.feeds) {
-			s.notify(StageReady)
-			s.Start(s.Data, s.Control)
-		}
+	case VerbSetup:
+		return s.handleSetup(rsp)
 	}
 
+	return
+}
+
+func (s *Session) handleSetup(rsp *Response) (err error) {
+	if rsp.StatusCode == RtspOK {
+		for _, f := range s.feeds {
+			if f.cseq == rsp.Cseq {
+				s.feedidx++
+				if err = f.TransportSetup(rsp.Header.Get(HeaderTransport)); err != nil {
+					return err
+				}
+				if !f.transp.IsTCP {
+					ch := byte(s.feedidx) * 2
+					if err := s.AddSink(ch, f.transp.Port.One); err != nil {
+						return err
+					}
+					if err := s.AddSink(ch+1, f.transp.Port.Two); err != nil {
+						return err
+					}
+				}
+			}
+		}
+	} else if rsp.StatusCode != RtspUnauthorized {
+		// Stream is not available even though SDP told us it is.
+		s.feedidx++
+	}
+	if s.feedidx >= len(s.feeds) {
+		s.notify(StageReady)
+		s.Start()
+	}
 	return
 }

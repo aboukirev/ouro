@@ -16,10 +16,11 @@ import (
 type (
 	// Conn encapsulates low level network connection and hides buffering and packetization.
 	Conn struct {
-		conn      *net.TCPConn  // Main in/out connection in regular RTSP, GET connection in RTSP over HTTP
-		post      *net.TCPConn  // POST connection in RTSP over HTTP
-		rdr       *bufio.Reader // For line-oriented text protocol
-		connected bool          // Indicates that POST has been issued for RTSP over HTTP connection
+		conn      *net.TCPConn   // Main in/out connection in regular RTSP, GET connection in RTSP over HTTP
+		post      *net.TCPConn   // POST connection in RTSP over HTTP
+		rdr       *bufio.Reader  // For line-oriented text protocol
+		connected bool           // Indicates that POST has been issued for RTSP over HTTP connection
+		Data      chan RawPacket // Channel to feed incoming data and control packet to for further processing
 		guid      string
 		Proto     int
 		Timeout   time.Duration
@@ -32,12 +33,25 @@ type (
 	// Maintains UDP connection for RTP and RTCP channel pair.
 	udpsink struct {
 		*net.UDPConn
-		done  chan int
-		index byte
+		done chan int
+		ch   byte
+	}
+
+	// RawPacket represents channel number and raw data buffer of RTP/RTCP packet.
+	RawPacket struct {
+		Channel byte
+		Payload []byte
 	}
 )
 
 var be = binary.BigEndian
+
+func isTimeoutOrTemp(err error) bool {
+	if nerr, ok := err.(net.Error); ok {
+		return nerr.Timeout() || nerr.Temporary()
+	}
+	return false
+}
 
 // Dial opens RTSP connection and starts a session.
 func Dial(uri string, proto int) (*Conn, error) {
@@ -66,6 +80,7 @@ func Dial(uri string, proto int) (*Conn, error) {
 		conn:      conn,
 		rdr:       bufio.NewReaderSize(conn, 2048),
 		connected: false,
+		Data:      make(chan RawPacket, 20),
 		guid:      fmt.Sprintf("%016x", rand.Uint64()),
 		Proto:     proto,
 		Timeout:   time.Millisecond * 2000, //time.Second * 2,
@@ -160,7 +175,7 @@ func (c *Conn) ReadBytes(n int) ([]byte, error) {
 }
 
 // AddSink creates a listener on UDP port for RTP data or control channel.
-func (c *Conn) AddSink(index byte, port int) error {
+func (c *Conn) AddSink(ch byte, port int) error {
 	if c.addr == nil {
 		var err error
 		if c.addr, err = net.ResolveIPAddr("ip", "127.0.0.1"); err != nil {
@@ -175,21 +190,16 @@ func (c *Conn) AddSink(index byte, port int) error {
 	sink := udpsink{
 		UDPConn: conn,
 		done:    make(chan int),
-		index:   index,
+		ch:      ch,
 	}
 	c.sinks = append(c.sinks, sink)
 	return nil
 }
 
 // Start initiates processing of incoming packets on all UDP listeners created thus far.
-func (c *Conn) Start(datach, ctrlch chan RawPacket) {
-	var ch chan RawPacket
-	for i, s := range c.sinks {
-		if (i % 2) == 0 {
-			ch = datach
-		} else {
-			ch = ctrlch
-		}
+func (c *Conn) Start() {
+	for _, s := range c.sinks {
+		fmt.Printf("Reading from UDP sink %d", s.ch)
 		go func(sink udpsink) {
 			var buf [2048]byte
 			for {
@@ -198,11 +208,12 @@ func (c *Conn) Start(datach, ctrlch chan RawPacket) {
 					break
 				}
 				n, _, err := sink.ReadFromUDP(buf[:])
-				if err != nil {
+				if err == nil {
+					select {
+					case c.Data <- RawPacket{Channel: sink.ch, Payload: append([]byte{}, buf[:n]...)}:
+					}
+				} else if !isTimeoutOrTemp(err) {
 					break
-				}
-				if ch != nil {
-					ch <- RawPacket{Channel: sink.index, Payload: append([]byte{}, buf[:n]...)}
 				}
 			}
 			sink.Close()

@@ -44,11 +44,6 @@ type (
 		XD    []byte   // Extension Data
 		PL    []byte   // Payload
 	}
-
-	// Sink combines RTP payloads and emits the resulting buffers to the consumer.
-	Sink struct {
-		Payload []byte
-	}
 )
 
 // Unpack validates a packed RTP packet and converts it into a sparse structure.

@@ -131,7 +131,6 @@ var (
 	errNoCredentials     = errors.New("Resource URI has no credentials to perform authorization")
 	errOutOfMemory       = errors.New("Out of memory")
 	errBadResponse       = errors.New("Bad or unexpected response")
-	errTimeout           = errors.New("Network timeout")
 	errNoConnection      = errors.New("Connection to RTSP source is required")
 	errPacketTooShort    = errors.New("Packet is too short")
 	errInvalidParameter  = errors.New("Invalid parameter")
