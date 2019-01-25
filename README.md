@@ -2,6 +2,21 @@
 This project is an attempt to build a comprehensive library to connect to IP cameras and consume video and audio streams.
 The ultimate goal is to create a robust streaming proxy converting IP camera stream into something directly usable from a browser.
 
+### Branch "testable"
+The idea is to avoid running main loop in a goroutine and instead act as "listen and serve" endless loop in a method.  The caller would be free to run it in a goroutine or to run it in the main thread and issue commands from a goroutine.  Command would be passed through a method that will queue them in a synchronized way.  MAin loop will pull command from the queue and execute one at a time.  Session will issue command and wait for a response, then verify that response matches CSeq, then process it.  RTP and RTCP packets coming in while waiting for response will be pushed into respective channel.
+
+This approach has several adavantages:
+- greater flexibility for the caller
+- each command could be wrapped into a testable method: issue request, wait for response, verify response
+- there is no need to track requests in a map and lookup and match responses
+- transport setup will happen one at a time, no need to match which transport is being set from response
+
+There are disadvantages:
+- caller won't be able to get a result of issued command
+- caller may get result from the issued command but it will require complex implementation
+
+This is worth a try though.
+
 ### Features
 At this time the following functionality has been implemented:
 - Connecting to camera over RTSP.
