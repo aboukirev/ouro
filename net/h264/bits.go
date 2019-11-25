@@ -69,6 +69,15 @@ func (r *BitReader) ReadFlag() (val bool, err error) {
 // ReadUnsignedGolomb reads and decodes exponential golomb encoded value from a bit stream.
 // Returns an error if running into end of stream prematurely.
 func (r *BitReader) ReadUnsignedGolomb() (val uint32, err error) {
+	if a := r.Available(); a < 8 {
+		var bval byte
+		if bval, err = r.ReadByteBits(a); err == nil {
+			val = uint32(bval) << (8 - a)
+		}
+
+		return
+	}
+
 	var zeroes uint
 	for val, err = r.ReadBits(1); val == 0; val, err = r.ReadBits(1) {
 		if err != nil {
