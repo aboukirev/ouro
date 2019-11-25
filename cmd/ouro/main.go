@@ -7,10 +7,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/aboukirev/ouro/net/h264"
-	"github.com/aboukirev/ouro/net/rtcp"
-	"github.com/aboukirev/ouro/net/rtp"
-	"github.com/aboukirev/ouro/net/rtsp"
+	"github.com/daneshvar/ouro/net/h264"
+	"github.com/daneshvar/ouro/net/rtcp"
+	"github.com/daneshvar/ouro/net/rtp"
+	"github.com/daneshvar/ouro/net/rtsp"
 )
 
 func handleStates(s *rtsp.Session) {

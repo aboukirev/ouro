@@ -1,1 +1,3 @@
-module github.com/aboukirev/ouro
+module github.com/daneshvar/ouro
+
+go 1.13

@@ -1,8 +1,8 @@
 package rtsp
 
 import (
-	"github.com/aboukirev/ouro/net/h264"
-	"github.com/aboukirev/ouro/net/sdp"
+	"github.com/daneshvar/ouro/net/h264"
+	"github.com/daneshvar/ouro/net/sdp"
 )
 
 type (

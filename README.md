@@ -21,7 +21,7 @@ At this time the following functionality has been implemented:
 ### Building and running
 Get the source:
 ```
-go get https://github.com/aboukirev/ouro
+go get https://github.com/daneshvar/ouro
 ```
 Execute either `make build` or  `go build ./cmd/ouro`.
 Run `./ouro "rtsp://user:password@ip-or-domain/path"`.  It will out put log of the short session to console.  At this time it just connects to camera, starts session, consumes stream for 2 seconds, pauses for 2 more seconds, then terminates connection.  
